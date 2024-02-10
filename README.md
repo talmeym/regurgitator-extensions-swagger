@@ -8,4 +8,4 @@ start your reading here: [regurgitator-all](https://talmeym.github.io/regurgitat
 
 ## regurgitator and swagger
 
-you can generate regurgitator configuration from open api swagger files using regurgitator-extensions-swagger
+you can generate regurgitator configuration from open api / swagger files using regurgitator-extensions-swagger
