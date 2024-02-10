@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2017 Miles Talmey.
+ * Distributed under the MIT License (license terms are at http://opensource.org/licenses/MIT).
+ */
 package uk.emarte.regurgitator.extensions.swagger;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -14,7 +18,6 @@ import io.swagger.v3.oas.models.parameters.Parameter;
 import io.swagger.v3.oas.models.responses.ApiResponse;
 import io.swagger.v3.oas.models.responses.ApiResponses;
 import io.swagger.v3.parser.core.models.SwaggerParseResult;
-import uk.emarte.regurgitator.core.*;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -220,6 +223,7 @@ public class ConfigurationGenerator {
             }
 
             String extractFormat = builder.toString();
+            System.out.println("-- creating create-parameter steps for path params");
             List<Step> createParameters = new ArrayList<>();
 
             for(int i = 0; i < ids.size(); i++) {
