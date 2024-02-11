@@ -15,6 +15,7 @@ import io.swagger.v3.oas.models.media.MediaType;
 import io.swagger.v3.oas.models.media.ObjectSchema;
 import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.oas.models.parameters.Parameter;
+import io.swagger.v3.oas.models.parameters.RequestBody;
 import io.swagger.v3.oas.models.responses.ApiResponse;
 import io.swagger.v3.oas.models.responses.ApiResponses;
 import io.swagger.v3.parser.core.models.SwaggerParseResult;
@@ -129,36 +130,58 @@ public class ConfigurationGenerator {
     private static void processOperation(Operation operation, String path, PathItem pathItem, Method method, List<Step> steps, List<Rule> rules, Map<String, Schema> componentSchemas, File outputDirectory) throws IOException {
         if (operation != null) {
             System.out.println("processing " + method + " " + path);
-            System.out.println("- creating path and method conditions");
-            Condition pathCondition = buildPathCondition(path, pathItem.getParameters() != null ? pathItem.getParameters() : operation.getParameters());
-            Condition methodCondition = new Condition(REQUEST_METADATA_METHOD, method.name(), null);
+
+            File pathDirectory = new File(outputDirectory, method + path.replace("/", SLASH_SUBSTITUTE).replace("{", CURLY_BRACE_SUBSTITUTE).replace("}", CURLY_BRACE_SUBSTITUTE));
+            pathDirectory.mkdirs();
+
+            RequestBody requestBody = operation.getRequestBody();
+
+            if(requestBody != null) {
+                Content requestContent = requestBody.getContent();
+
+                if (requestContent != null && requestContent.size() > 0) {
+                    String requestMediaTypeName = requestContent.keySet().iterator().next();
+                    MediaType requestMediaType = requestContent.get(requestMediaTypeName);
+
+                    if (requestMediaType.getSchema() != null && (requestMediaType.getSchema().getProperties() != null || requestMediaType.getSchema().get$ref() != null || requestMediaType.getSchema().getAdditionalProperties() != null || "array".equals(requestMediaType.getSchema().getType()))) {
+                        pathDirectory.mkdirs();
+                        File requestFile = new File(pathDirectory, pathDirectory.getName() + "-REQ.json");
+                        System.out.println("Generating request file: " + requestFile.getName());
+                        new ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(new FileOutputStream(requestFile, false), buildObject(requestMediaType.getSchema(), componentSchemas));
+                    }
+                }
+            }
+
             ApiResponses responses = operation.getResponses();
             String stepId = "step-" + (steps.size() + 1);
+            boolean responseCreated = false;
 
             if (responses != null) {
-                File pathDirectory = new File(outputDirectory, method + path.replace("/", SLASH_SUBSTITUTE).replace("{", CURLY_BRACE_SUBSTITUTE).replace("}", CURLY_BRACE_SUBSTITUTE));
-                pathDirectory.mkdirs();
-
                 for (String code : responses.keySet()) {
                     System.out.println("### " + code + " response");
                     ApiResponse apiResponse = responses.get(code);
-                    Content content = apiResponse.getContent();
+                    Content responseContent = apiResponse.getContent();
 
-                    if (content != null && content.size() > 0) {
-                        String firstMediaTypeName = content.keySet().iterator().next();
-                        System.out.println("### media type " + firstMediaTypeName);
-                        MediaType firstMediaType = content.get(firstMediaTypeName);
+                    if (responseContent != null && responseContent.size() > 0) {
+                        String responseMediaTypeName = responseContent.keySet().iterator().next();
+                        System.out.println("### media type " + responseMediaTypeName);
+                        MediaType responseMediaType = responseContent.get(responseMediaTypeName);
 
-                        if (firstMediaType.getSchema() != null && (firstMediaType.getSchema().getProperties() != null || firstMediaType.getSchema().get$ref() != null || firstMediaType.getSchema().getAdditionalProperties() != null || "array".equals(firstMediaType.getSchema().getType()))) {
+                        if (responseMediaType.getSchema() != null && (responseMediaType.getSchema().getProperties() != null || responseMediaType.getSchema().get$ref() != null || responseMediaType.getSchema().getAdditionalProperties() != null || "array".equals(responseMediaType.getSchema().getType()))) {
                             File responseFile = new File(pathDirectory, pathDirectory.getName() + "-" + code + ".json");
                             System.out.println("Generating response file: " + responseFile.getName());
-                            new ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(new FileOutputStream(responseFile, false), buildObject(firstMediaType.getSchema(), componentSchemas));
+                            new ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(new FileOutputStream(responseFile, false), buildObject(responseMediaType.getSchema(), componentSchemas));
+                            responseCreated = true;
                         }
                     } else {
                         System.out.println("### code " + code + " has no content !?");
                     }
                 }
+            }
 
+            List<Step> stepsForConfiguration = new ArrayList<>(buildCreateParameterStepsForPath(path, pathItem.getParameters() != null ? pathItem.getParameters() : operation.getParameters()));
+
+            if(responseCreated) {
                 Optional<String> optStatusCodeToUse = responses.keySet().stream().filter(sc -> sc.length() == 3 && sc.startsWith("2")).findFirst();
                 String statusCodeToUse = optStatusCodeToUse.orElseGet(() -> responses.keySet().iterator().next());
                 String responseFileToUse = "classpath:/" + pathDirectory.getName() + "/" + pathDirectory.getName() + "-" + statusCodeToUse + ".json";
@@ -167,7 +190,7 @@ public class ConfigurationGenerator {
 
                 CreateHttpResponse createHttpResponse;
 
-                if(new File(pathDirectory, pathDirectory.getName() + "-" + statusCodeToUse + ".json").exists()) {
+                if (new File(pathDirectory, pathDirectory.getName() + "-" + statusCodeToUse + ".json").exists()) {
                     System.out.println("- creating http response step using response file");
                     createHttpResponse = new CreateHttpResponse(null, null, responseFileToUse, parseLong(statusCodeToUse), contentTypeToUse);
                 } else {
@@ -175,22 +198,23 @@ public class ConfigurationGenerator {
                     createHttpResponse = new CreateHttpResponse(null, "no content", null, parseLong(statusCodeToUse), contentTypeToUse);
                 }
 
-                List<Step> stepsForConfiguration = buildCreateParameterStepsForPath(path, pathItem.getParameters() != null ? pathItem.getParameters() : operation.getParameters());
                 stepsForConfiguration.add(createHttpResponse);
-
-                RegurgitatorConfiguration regurgitatorConfiguration = new RegurgitatorConfiguration(stepsForConfiguration);
-                File configFile = new File(pathDirectory, "regurgitator-configuration.json");
-                System.out.println("- generating config file: " + pathDirectory.getName() + "/" + configFile.getName());
-                new ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(new FileOutputStream(configFile, false), regurgitatorConfiguration);
-
-                System.out.println("- creating sequence ref step");
-                steps.add(new SequenceRef(stepId, "classpath:/" + pathDirectory.getName() + "/regurgitator-configuration.json"));
             } else {
                 System.out.println("- creating http response step");
-                steps.add(new CreateHttpResponse(stepId, REGURGITATOR_COLON + stepId + " : " + method + " " + path + " : " + OK + " " + PLAIN_TEXT, null, parseLong(OK), PLAIN_TEXT));
+                stepsForConfiguration.add(new CreateHttpResponse(null, REGURGITATOR_COLON + method + " " + path + " : " + OK + " " + PLAIN_TEXT, null, parseLong(OK), PLAIN_TEXT));
             }
 
+            RegurgitatorConfiguration regurgitatorConfiguration = new RegurgitatorConfiguration(stepsForConfiguration);
+            File configFile = new File(pathDirectory, "regurgitator-configuration.json");
+            System.out.println("- generating config file: " + pathDirectory.getName() + "/" + configFile.getName());
+            new ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(new FileOutputStream(configFile, false), regurgitatorConfiguration);
+
+            System.out.println("- creating sequence ref step");
+            steps.add(new SequenceRef(stepId, "classpath:/" + pathDirectory.getName() + "/regurgitator-configuration.json"));
+
             System.out.println("- creating rule");
+            Condition pathCondition = buildPathCondition(path, pathItem.getParameters() != null ? pathItem.getParameters() : operation.getParameters());
+            Condition methodCondition = new Condition(REQUEST_METADATA_METHOD, method.name(), null);
             rules.add(new Rule(stepId, asList(methodCondition, pathCondition)));
         }
     }
