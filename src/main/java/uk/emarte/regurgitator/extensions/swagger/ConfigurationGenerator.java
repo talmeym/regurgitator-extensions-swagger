@@ -29,13 +29,15 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 
 public class ConfigurationGenerator {
-    public static final String PLAIN_TEXT = "text/plain";
-    public static final String OK = "200";
-    public static final String NUMERIC = "0-9";
-    public static final String ALPHA_NUMERIC = "A-Za-z0-9-";
-    public static final String REQUEST_METADATA_REQUEST_URI = "request-metadata:request-uri";
-    public static final String REQUEST_METADATA_METHOD = "request-metadata:method";
-    public static final String REGURGITATOR_COLON = "regurgitator : ";
+    private static final String PLAIN_TEXT = "text/plain";
+    private static final String OK = "200";
+    private static final String NUMERIC = "0-9";
+    private static final String ALPHA_NUMERIC = "A-Za-z0-9-";
+    private static final String REQUEST_METADATA_REQUEST_URI = "request-metadata:request-uri";
+    private static final String REQUEST_METADATA_METHOD = "request-metadata:method";
+    private static final String REGURGITATOR_COLON = "regurgitator : ";
+    private static final String SLASH_SUBSTITUTE = "%";
+    private static final String CURLY_BRACE_SUBSTITUTE = "^";
 
     private enum Method {
         GET, PUT, POST, PATCH, DELETE, HEAD
@@ -99,7 +101,7 @@ public class ConfigurationGenerator {
             String stepId = "step-" + (steps.size() + 1);
 
             if (responses != null) {
-                File pathDirectory = new File(outputDirectory, method + path.replace("/", "-").replace("{", "_").replace("}", "_"));
+                File pathDirectory = new File(outputDirectory, method + path.replace("/", SLASH_SUBSTITUTE).replace("{", CURLY_BRACE_SUBSTITUTE).replace("}", CURLY_BRACE_SUBSTITUTE));
                 pathDirectory.mkdirs();
 
                 for (String code : responses.keySet()) {
