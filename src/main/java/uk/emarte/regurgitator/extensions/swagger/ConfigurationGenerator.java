@@ -26,7 +26,7 @@ import java.util.*;
 
 import static java.lang.Long.parseLong;
 import static java.util.Arrays.asList;
-import static java.util.Collections.*;
+import static java.util.Collections.singletonList;
 
 /**
  * Generates regurgitator configuration from open api (v3) 'swagger' files
@@ -55,6 +55,7 @@ public class ConfigurationGenerator {
     @SuppressWarnings("rawtypes")
     public static void main(String[] args) throws GenerationException {
         if(args.length != 2) {
+            System.err.println("Invalid argument count: " + args.length);
             System.err.println(USAGE_TEXT);
             System.exit(1);
         }
@@ -71,6 +72,18 @@ public class ConfigurationGenerator {
      */
     public static void generateConfiguration(File swaggerFile, File outputDirectory) throws GenerationException {
          if (!(swaggerFile.exists() && outputDirectory.isDirectory() && outputDirectory.exists())) {
+             if(!swaggerFile.exists()) {
+                 System.err.println("Swagger file does not exist");
+             }
+
+             if(!outputDirectory.isDirectory()) {
+                 System.err.println("Output directory is not a directory");
+             }
+
+             if(!outputDirectory.exists()) {
+                 System.err.println("Output directory does not exist");
+             }
+
              System.err.println(USAGE_TEXT);
              System.exit(1);
          }
