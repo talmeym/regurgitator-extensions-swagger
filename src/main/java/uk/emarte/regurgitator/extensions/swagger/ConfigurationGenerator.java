@@ -137,10 +137,12 @@ public class ConfigurationGenerator {
             RequestBody requestBody = operation.getRequestBody();
 
             if(requestBody != null) {
+                System.out.println("### request");
                 Content requestContent = requestBody.getContent();
 
                 if (requestContent != null && requestContent.size() > 0) {
                     String requestMediaTypeName = requestContent.keySet().iterator().next();
+                    System.out.println("### media type " + requestMediaTypeName);
                     MediaType requestMediaType = requestContent.get(requestMediaTypeName);
 
                     if (requestMediaType.getSchema() != null && (requestMediaType.getSchema().getProperties() != null || requestMediaType.getSchema().get$ref() != null || requestMediaType.getSchema().getAdditionalProperties() != null || "array".equals(requestMediaType.getSchema().getType()))) {
@@ -149,6 +151,8 @@ public class ConfigurationGenerator {
                         System.out.println("Generating request file: " + requestFile.getName());
                         new ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(new FileOutputStream(requestFile, false), buildObject(requestMediaType.getSchema(), componentSchemas));
                     }
+                } else {
+                    System.out.println("### request has no content !?");
                 }
             }
 
@@ -194,13 +198,13 @@ public class ConfigurationGenerator {
                     System.out.println("- creating http response step using response file");
                     createHttpResponse = new CreateHttpResponse(null, null, responseFileToUse, parseLong(statusCodeToUse), contentTypeToUse);
                 } else {
-                    System.out.println("- creating http response step without response file");
+                    System.out.println("- creating http response step with missing response file");
                     createHttpResponse = new CreateHttpResponse(null, "no content", null, parseLong(statusCodeToUse), contentTypeToUse);
                 }
 
                 stepsForConfiguration.add(createHttpResponse);
             } else {
-                System.out.println("- creating http response step");
+                System.out.println("- creating http response step, no responses generated");
                 stepsForConfiguration.add(new CreateHttpResponse(null, REGURGITATOR_COLON + method + " " + path + " : " + OK + " " + PLAIN_TEXT, null, parseLong(OK), PLAIN_TEXT));
             }
 
@@ -305,7 +309,6 @@ public class ConfigurationGenerator {
 
     @SuppressWarnings("rawtypes")
     private static Object buildObject(Schema<?> schema, Map<String, Schema> componentSchemas) {
-
         if (schema.get$ref() != null) {
             String $ref = schema.get$ref();
             $ref = $ref.contains("/") ? $ref.substring($ref.lastIndexOf("/") + 1) : $ref;
@@ -314,7 +317,7 @@ public class ConfigurationGenerator {
 
         if (schema.getProperties() != null || schema.getAdditionalProperties() != null) {
             Map<String, Object> objectContents = new LinkedHashMap<>();
-            Map<String, Schema> properties = schema.getProperties() != null ? schema.getProperties() : ((ObjectSchema) schema.getAdditionalProperties()).getProperties();
+            Map<String, Schema> properties = schema.getProperties() != null ? schema.getProperties() : ((ObjectSchema)schema.getAdditionalProperties()).getProperties();
 
             for (String name : properties.keySet()) {
                 Schema<?> propertySchema = properties.get(name);
@@ -323,15 +326,26 @@ public class ConfigurationGenerator {
                 if ("array".equals(type)) {
                     objectContents.put(name, singletonList(buildObject(propertySchema.getItems(), componentSchemas)));
                 } else if ("integer".equals(type)) {
-                    objectContents.put(name, Integer.parseInt("" + (propertySchema.getExample() != null ? propertySchema.getExample() : 0)));
+                    if("int32".equals(propertySchema.getFormat()) || propertySchema.getFormat() == null) {
+                        objectContents.put(name, Integer.parseInt(propertySchema.getExample() != null ? "" + propertySchema.getExample() : "0"));
+                    }
+                    if("int64".equals(propertySchema.getFormat())) {
+                        objectContents.put(name, Long.parseLong(propertySchema.getExample() != null ? "" + propertySchema.getExample() : "0"));
+                    }
+                } else if ("number".equals(type)) {
+                    if(propertySchema.getFormat() == null) {
+                        objectContents.put(name, Integer.parseInt(propertySchema.getExample() != null ? "" + propertySchema.getExample() : "0"));
+                    }
+                    if("float".equals(propertySchema.getFormat())) {
+                        objectContents.put(name, Float.parseFloat(propertySchema.getExample() != null ? "" + propertySchema.getExample() : "0"));
+                    }
+                    if("double".equals(propertySchema.getFormat())) {
+                        objectContents.put(name, Double.parseDouble(propertySchema.getExample() != null ? "" + propertySchema.getExample() : "0"));
+                    }
                 } else if ("object".equals(type)) {
                     objectContents.put(name, buildObject(propertySchema, componentSchemas));
                 } else if ("boolean".equals(type)) {
                     objectContents.put(name, Boolean.parseBoolean("" + (propertySchema.getExample() != null ? propertySchema.getExample() : true)));
-                } else if ("float".equals(type)) {
-                    objectContents.put(name, Float.parseFloat("" + (propertySchema.getExample() != null ? propertySchema.getExample() : 0f)));
-                } else if ("double".equals(type)) {
-                    objectContents.put(name, Double.parseDouble("" + (propertySchema.getExample() != null ? propertySchema.getExample() : 0d)));
                 } else if (propertySchema.get$ref() != null) {
                     String $ref = propertySchema.get$ref();
                     $ref = $ref.contains("/") ? $ref.substring($ref.lastIndexOf("/") + 1) : $ref;
