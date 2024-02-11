@@ -9,3 +9,5 @@ start your reading here: [regurgitator-all](https://talmeym.github.io/regurgitat
 ## regurgitator and swagger
 
 generate regurgitator configuration from open api / swagger files using regurgitator-extensions-swagger
+
+```java -jar regurgitator-extensions-swagger-0.1.2.jar uk.emarte.regurgitator.extensions.swagger.ConfigurationGenerator swaggerfile.json src/main/resources```
