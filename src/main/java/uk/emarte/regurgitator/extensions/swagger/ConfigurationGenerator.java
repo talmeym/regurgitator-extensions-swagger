@@ -28,7 +28,11 @@ import static java.lang.Long.parseLong;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 
+/**
+ * Generates regurgitator configuration from open api (v3) 'swagger' files
+ */
 public class ConfigurationGenerator {
+    private static final String USAGE_TEXT = "Usage: java uk.emarte.regurgitator.extensions.swagger.ConfigurationGenerator swaggerFile.[json|yaml] /outputDirectory";
     private static final String PLAIN_TEXT = "text/plain";
     private static final String OK = "200";
     private static final String NUMERIC = "0-9";
@@ -43,15 +47,33 @@ public class ConfigurationGenerator {
         GET, PUT, POST, PATCH, DELETE, HEAD
     }
 
+    /**
+     * @see uk.emarte.regurgitator.extensions.swagger.ConfigurationGenerator#generateConfiguration(File, File)
+     * @param args input arguments - [0] open api 'swagger' file path, [1] output directory path
+     * @throws GenerationException if a problem is encountered whilst generating the configuration
+     */
     @SuppressWarnings("rawtypes")
     public static void main(String[] args) throws GenerationException {
-        File swaggerFile = new File(args[0]);
-        File outputDirectory = new File(args[1]);
-
-        if (!(swaggerFile.exists() && outputDirectory.exists() && outputDirectory.isDirectory())) {
-            System.err.println("Usage: java uk.emarte.regurgitator.extensions.swagger.ConfigurationGenerator swaggerFile.json /outputDirectory");
+        if(args.length != 2) {
+            System.err.println(USAGE_TEXT);
             System.exit(1);
         }
+
+        generateConfiguration(new File(args[0]), new File(args[1]));
+    }
+
+    /**
+     * generates a set of regurgitator configuration from any open api 'swagger' file.
+     * NOTE: both parameters need to exist.
+     * @param swaggerFile an open api 'swagger' file from which to generate configuration
+     * @param outputDirectory a directory into which to save the configuration files
+     * @throws GenerationException if a problem is encountered whilst generating the configuration
+     */
+    public static void generateConfiguration(File swaggerFile, File outputDirectory) throws GenerationException {
+         if (!(swaggerFile.exists() && outputDirectory.isDirectory() && outputDirectory.exists())) {
+             System.err.println(USAGE_TEXT);
+             System.exit(1);
+         }
 
         try {
             System.out.println("parsing open api file: " + swaggerFile.getName());
