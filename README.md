@@ -27,6 +27,6 @@ functionality includes:
 
 **go from a single open api file to a working mock returning responses for every method/path combination (without writing any code)**
 
-**extend what it generates to add simple or complex logic to your mock (without writing any code)**
+**extend what is generated to add simple or complex logic to your mock (without writing any code)**
 
 ```java uk.emarte.regurgitator.extensions.swagger.ConfigurationGenerator swaggerfile.[json|yaml] outputDirectory```
