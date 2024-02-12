@@ -117,7 +117,7 @@ public class ConfigurationGenerator {
             System.out.println("creating decision");
             Decision decision = new Decision("decision-1", steps, rules, defaultStepId);
 
-            System.out.println("saving regurgitator configuration");
+            System.out.println("### saving regurgitator configuration");
 
             FileOutputStream fileOutputStream = new FileOutputStream(new File(outputDirectory, "regurgitator-configuration.json"), false);
             new ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(fileOutputStream, new RegurgitatorConfiguration(singletonList(decision)));
@@ -148,7 +148,7 @@ public class ConfigurationGenerator {
                     if (requestMediaType.getSchema() != null && (requestMediaType.getSchema().getProperties() != null || requestMediaType.getSchema().get$ref() != null || requestMediaType.getSchema().getAdditionalProperties() != null || "array".equals(requestMediaType.getSchema().getType()))) {
                         pathDirectory.mkdirs();
                         File requestFile = new File(pathDirectory, pathDirectory.getName() + "-REQ.json");
-                        System.out.println("Generating request file: " + requestFile.getName());
+                        System.out.println("### generating request file: " + requestFile.getName());
                         new ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(new FileOutputStream(requestFile, false), buildObject(requestMediaType.getSchema(), componentSchemas));
                     }
                 } else {
@@ -157,7 +157,6 @@ public class ConfigurationGenerator {
             }
 
             ApiResponses responses = operation.getResponses();
-            String stepId = "step-" + (steps.size() + 1);
             boolean responseCreated = false;
 
             if (responses != null) {
@@ -173,7 +172,7 @@ public class ConfigurationGenerator {
 
                         if (responseMediaType.getSchema() != null && (responseMediaType.getSchema().getProperties() != null || responseMediaType.getSchema().get$ref() != null || responseMediaType.getSchema().getAdditionalProperties() != null || "array".equals(responseMediaType.getSchema().getType()))) {
                             File responseFile = new File(pathDirectory, pathDirectory.getName() + "-" + code + ".json");
-                            System.out.println("Generating response file: " + responseFile.getName());
+                            System.out.println("### generating response file: " + responseFile.getName());
                             new ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(new FileOutputStream(responseFile, false), buildObject(responseMediaType.getSchema(), componentSchemas));
                             responseCreated = true;
                         }
@@ -183,6 +182,7 @@ public class ConfigurationGenerator {
                 }
             }
 
+            System.out.println("creating path param extract steps");
             List<Step> stepsForConfiguration = new ArrayList<>(buildCreateParameterStepsForPath(path, pathItem.getParameters() != null ? pathItem.getParameters() : operation.getParameters()));
 
             if(responseCreated) {
@@ -195,37 +195,40 @@ public class ConfigurationGenerator {
                 CreateHttpResponse createHttpResponse;
 
                 if (new File(pathDirectory, pathDirectory.getName() + "-" + statusCodeToUse + ".json").exists()) {
-                    System.out.println("- creating http response step using response file");
+                    System.out.println("creating http response step using response file");
                     createHttpResponse = new CreateHttpResponse(null, null, responseFileToUse, parseLong(statusCodeToUse), contentTypeToUse);
                 } else {
-                    System.out.println("- creating http response step with missing response file");
+                    System.out.println("creating http response step with missing response file");
                     createHttpResponse = new CreateHttpResponse(null, "no content", null, parseLong(statusCodeToUse), contentTypeToUse);
                 }
 
                 stepsForConfiguration.add(createHttpResponse);
             } else {
-                System.out.println("- creating http response step, no responses generated");
+                System.out.println("creating http response step, no responses generated");
                 stepsForConfiguration.add(new CreateHttpResponse(null, REGURGITATOR_COLON + method + " " + path + " : " + OK + " " + PLAIN_TEXT, null, parseLong(OK), PLAIN_TEXT));
             }
 
             RegurgitatorConfiguration regurgitatorConfiguration = new RegurgitatorConfiguration(stepsForConfiguration);
             File configFile = new File(pathDirectory, "regurgitator-configuration.json");
-            System.out.println("- generating config file: " + pathDirectory.getName() + "/" + configFile.getName());
+            System.out.println("### generating config file: " + pathDirectory.getName() + "/" + configFile.getName());
             new ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(new FileOutputStream(configFile, false), regurgitatorConfiguration);
 
-            System.out.println("- creating sequence ref step");
+            System.out.println("creating sequence ref step");
+            String stepId = "step-" + (steps.size() + 1);
             steps.add(new SequenceRef(stepId, "classpath:/" + pathDirectory.getName() + "/regurgitator-configuration.json"));
 
-            System.out.println("- creating rule");
+            System.out.println("creating path condition");
             Condition pathCondition = buildPathCondition(path, pathItem.getParameters() != null ? pathItem.getParameters() : operation.getParameters());
+            System.out.println("creating method condition");
             Condition methodCondition = new Condition(REQUEST_METADATA_METHOD, method.name(), null);
+            System.out.println("creating routing rule");
             rules.add(new Rule(stepId, asList(methodCondition, pathCondition)));
         }
     }
 
     private static Condition buildPathCondition(String path, List<Parameter> parameters) {
         if (path.contains("{") && path.contains("}")) {
-            System.out.println("-- parsing inline parameters from path");
+            System.out.println("- parsing inline parameters from path");
             List<String> separators = new ArrayList<>();
             List<String> types = new ArrayList<>();
             List<Boolean> requireds = new ArrayList<>();
@@ -238,7 +241,7 @@ public class ConfigurationGenerator {
 
             separators.add(path);
 
-            System.out.println("-- creating regex for path");
+            System.out.println("- creating regex for path");
             StringBuilder builder = new StringBuilder("^");
 
             while (!separators.isEmpty()) {
@@ -258,7 +261,7 @@ public class ConfigurationGenerator {
 
     private static List<Step> buildCreateParameterStepsForPath(String path, List<Parameter> parameters) {
         if (path.contains("{") && path.contains("}")) {
-            System.out.println("-- parsing inline parameters from path");
+            System.out.println("- parsing inline parameters from path");
             List<String> ids = new ArrayList<>();
             List<String> separators = new ArrayList<>();
             List<String> types = new ArrayList<>();
@@ -274,7 +277,7 @@ public class ConfigurationGenerator {
 
             separators.add(path);
 
-            System.out.println("-- creating extract format for path");
+            System.out.println("- creating extract format for path");
             StringBuilder builder = new StringBuilder();
             int idIndex = 0;
 
@@ -288,7 +291,7 @@ public class ConfigurationGenerator {
             }
 
             String extractFormat = builder.toString();
-            System.out.println("-- creating create-parameter steps for path params");
+            System.out.println("- creating create-parameter steps for path params");
             List<Step> createParameters = new ArrayList<>();
 
             for(int i = 0; i < ids.size(); i++) {
