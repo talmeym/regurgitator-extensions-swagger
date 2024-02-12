@@ -8,7 +8,7 @@ start your reading here: [regurgitator-all](https://talmeym.github.io/regurgitat
 
 ## regurgitator and swagger
 
-generate regurgitator configuration from open api / swagger files using regurgitator-extensions-swagger
+generate regurgitator configuration from open api / swagger files
 
 ```xml
 <dependency>
