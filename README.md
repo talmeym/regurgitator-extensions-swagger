@@ -23,9 +23,7 @@ functionality includes:
 - generation of example request and response files
 - extraction of path variable parameters using extract processor
 
-*currently only json configuration and output files supported*
-
-*more functionality to come - under construction*
+*currently only json configuration and output files supported - more functionality to come - under construction*
 
 **go from a single open api file to a working mock returning responses for every method/path combination (without writing any code)**
 
