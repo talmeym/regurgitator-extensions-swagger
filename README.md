@@ -14,7 +14,7 @@ generate regurgitator configuration from open api / swagger files using regurgit
 <dependency>
     <groupId>uk.emarte.regurgitator</groupId>
     <artifactId>regurgitator-extensions-swagger</artifactId>
-    <version>0.1.2</version>
+    <version>0.1.3</version>
 </dependency>
 ```
 
