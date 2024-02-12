@@ -40,7 +40,7 @@ public class ConfigurationGenerator {
     private static final String ALPHA_NUMERIC = "A-Za-z0-9-";
     private static final String REQUEST_METADATA_REQUEST_URI = "request-metadata:request-uri";
     private static final String REQUEST_METADATA_METHOD = "request-metadata:method";
-    private static final String REGURGITATOR_COLON = "regurgitator : ";
+    private static final String REQUEST_HEADERS_MOCK_RESPONSE_CODE = "request-headers:mock-response-code";
     private static final String SLASH_SUBSTITUTE = "%";
     private static final String CURLY_BRACE_SUBSTITUTE = "^";
 
@@ -99,7 +99,7 @@ public class ConfigurationGenerator {
 
             Map<String, Schema> componentSchemas = openAPI.getComponents() != null ? openAPI.getComponents().getSchemas() : null;
 
-            System.out.println("processing " + paths.size() + " path(s)");
+            System.out.println("processing " + paths.size() + " route(s)");
             for (String path : paths.keySet()) {
                 PathItem pathItem = paths.get(path);
                 processOperation(pathItem.getGet(), path, pathItem, Method.GET, steps, rules, componentSchemas, outputDirectory);
@@ -110,14 +110,14 @@ public class ConfigurationGenerator {
                 processOperation(pathItem.getHead(), path, pathItem, Method.HEAD, steps, rules, componentSchemas, outputDirectory);
             }
 
-            System.out.println("creating default no-path step");
+            System.out.println("creating routing default step");
             String defaultStepId = "step-" + (steps.size() + 1);
-            steps.add(new CreateHttpResponse(defaultStepId, REGURGITATOR_COLON + "unmapped operation", null, 500L, PLAIN_TEXT));
+            steps.add(new CreateHttpResponse(defaultStepId, "regurgitator : " + "unmapped operation", null, 500L, PLAIN_TEXT));
 
-            System.out.println("creating decision");
+            System.out.println("creating routing decision");
             Decision decision = new Decision("decision-1", steps, rules, defaultStepId);
 
-            System.out.println("### saving regurgitator configuration");
+            System.out.println("### saving routing configuration");
 
             FileOutputStream fileOutputStream = new FileOutputStream(new File(outputDirectory, "regurgitator-configuration.json"), false);
             new ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(fileOutputStream, new RegurgitatorConfiguration(singletonList(decision)));
@@ -129,7 +129,7 @@ public class ConfigurationGenerator {
     @SuppressWarnings({"rawtypes", "ResultOfMethodCallIgnored"})
     private static void processOperation(Operation operation, String path, PathItem pathItem, Method method, List<Step> steps, List<Rule> rules, Map<String, Schema> componentSchemas, File outputDirectory) throws IOException {
         if (operation != null) {
-            System.out.println("processing " + method + " " + path);
+            System.out.println("processing route " + method + " " + path);
 
             File pathDirectory = new File(outputDirectory, method + path.replace("/", SLASH_SUBSTITUTE).replace("{", CURLY_BRACE_SUBSTITUTE).replace("}", CURLY_BRACE_SUBSTITUTE));
             pathDirectory.mkdirs();
@@ -159,6 +159,9 @@ public class ConfigurationGenerator {
             ApiResponses responses = operation.getResponses();
             boolean responseCreated = false;
 
+            List<Step> responseDecisionSteps = new ArrayList<>();
+            List<Rule> responseDecisionRules = new ArrayList<>();
+
             if (responses != null) {
                 for (String code : responses.keySet()) {
                     System.out.println("### " + code + " response");
@@ -174,10 +177,18 @@ public class ConfigurationGenerator {
                             File responseFile = new File(pathDirectory, pathDirectory.getName() + "-" + code + ".json");
                             System.out.println("### generating response file: " + responseFile.getName());
                             new ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(new FileOutputStream(responseFile, false), buildObject(responseMediaType.getSchema(), componentSchemas));
+                            String fileReference = "classpath:/" + pathDirectory.getName() + "/" + pathDirectory.getName() + "-" + code + ".json";
+                            System.out.println("creating http response for file");
+                            responseDecisionSteps.add(new CreateHttpResponse(pathDirectory.getName() + "-" + code, null, fileReference, parseLong(code), responseMediaTypeName));
+                            System.out.println("creating decision rule for file");
+                            responseDecisionRules.add(new Rule(pathDirectory.getName() + "-" + code, singletonList(new Condition(REQUEST_HEADERS_MOCK_RESPONSE_CODE, code, null))));
                             responseCreated = true;
                         }
                     } else {
-                        System.out.println("### code " + code + " has no content !?");
+                        System.out.println("### no media type ");
+                        System.out.println("creating http response without file");
+                        responseDecisionSteps.add(new CreateHttpResponse(pathDirectory.getName() + "-" + code, "no content", null, parseLong(code), PLAIN_TEXT));
+                        responseDecisionRules.add(new Rule(pathDirectory.getName() + "-" + code, singletonList(new Condition(REQUEST_HEADERS_MOCK_RESPONSE_CODE, code, null))));
                     }
                 }
             }
@@ -186,26 +197,13 @@ public class ConfigurationGenerator {
             List<Step> stepsForConfiguration = new ArrayList<>(buildCreateParameterStepsForPath(path, pathItem.getParameters() != null ? pathItem.getParameters() : operation.getParameters()));
 
             if(responseCreated) {
+                System.out.println("creating route response decision");
                 Optional<String> optStatusCodeToUse = responses.keySet().stream().filter(sc -> sc.length() == 3 && sc.startsWith("2")).findFirst();
                 String statusCodeToUse = optStatusCodeToUse.orElseGet(() -> responses.keySet().iterator().next());
-                String responseFileToUse = "classpath:/" + pathDirectory.getName() + "/" + pathDirectory.getName() + "-" + statusCodeToUse + ".json";
-                Content contentToUse = responses.get(statusCodeToUse).getContent();
-                String contentTypeToUse = contentToUse != null && contentToUse.size() > 0 ? contentToUse.keySet().iterator().next() : PLAIN_TEXT;
-
-                CreateHttpResponse createHttpResponse;
-
-                if (new File(pathDirectory, pathDirectory.getName() + "-" + statusCodeToUse + ".json").exists()) {
-                    System.out.println("creating http response step using response file");
-                    createHttpResponse = new CreateHttpResponse(null, null, responseFileToUse, parseLong(statusCodeToUse), contentTypeToUse);
-                } else {
-                    System.out.println("creating http response step with missing response file");
-                    createHttpResponse = new CreateHttpResponse(null, "no content", null, parseLong(statusCodeToUse), contentTypeToUse);
-                }
-
-                stepsForConfiguration.add(createHttpResponse);
+                stepsForConfiguration.add(new Decision(null, responseDecisionSteps, responseDecisionRules, pathDirectory.getName() + "-" + statusCodeToUse));
             } else {
-                System.out.println("creating http response step, no responses generated");
-                stepsForConfiguration.add(new CreateHttpResponse(null, REGURGITATOR_COLON + method + " " + path + " : " + OK + " " + PLAIN_TEXT, null, parseLong(OK), PLAIN_TEXT));
+                System.out.println("creating route response step, no responses generated");
+                stepsForConfiguration.add(new CreateHttpResponse(null, "regurgitator : " + method + " " + path + " : " + OK + " " + PLAIN_TEXT, null, parseLong(OK), PLAIN_TEXT));
             }
 
             RegurgitatorConfiguration regurgitatorConfiguration = new RegurgitatorConfiguration(stepsForConfiguration);

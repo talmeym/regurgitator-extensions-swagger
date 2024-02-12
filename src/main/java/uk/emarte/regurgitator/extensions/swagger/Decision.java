@@ -4,10 +4,13 @@
  */
 package uk.emarte.regurgitator.extensions.swagger;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
 
+@JsonInclude(Include.NON_NULL)
 class Decision implements Step {
     @JsonProperty String kind = "decision";
     @JsonProperty String id;
