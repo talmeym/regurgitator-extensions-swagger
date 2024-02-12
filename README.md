@@ -4,17 +4,17 @@ regurgitator is a lightweight, modular, extendable java framework that you confi
 
 start your reading here: [regurgitator-all](https://talmeym.github.io/regurgitator-all#regurgitator)
 
-[``apidocs``](https://regurgitator.emarte.uk/apidocs/regurgitator-extensions-swagger/0.1.2/)
+[``apidocs``](https://regurgitator.emarte.uk/apidocs/regurgitator-extensions-swagger/0.1.3/)
 
 ## regurgitator and swagger
 
-generate regurgitator configuration from open api / swagger files using regurgitator-extensions-swagger
+generate regurgitator configuration from open api / swagger files
 
 ```xml
 <dependency>
     <groupId>uk.emarte.regurgitator</groupId>
     <artifactId>regurgitator-extensions-swagger</artifactId>
-    <version>0.1.2</version>
+    <version>0.1.3</version>
 </dependency>
 ```
 
@@ -23,12 +23,10 @@ functionality includes:
 - generation of example request and response files
 - extraction of path variable parameters using extract processor
 
-*currently only json configuration and output files supported*
-
-*more functionality to come - under construction*
+*currently only json configuration and output files supported - more functionality to come - under construction*
 
 **go from a single open api file to a working mock returning responses for every method/path combination (without writing any code)**
 
-**extend what it generates to add simple or complex logic to your mock (without writing any code)**
+**extend what is generated to add simple or complex logic to your mock (without writing any code)**
 
 ```java uk.emarte.regurgitator.extensions.swagger.ConfigurationGenerator swaggerfile.[json|yaml] outputDirectory```
