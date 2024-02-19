@@ -176,7 +176,7 @@ public class ConfigurationGenerator {
                         pathDirectory.mkdirs();
                         File requestFile = new File(pathDirectory, pathDirectory.getName() + "-REQ.json");
                         System.out.println("### generating request file: " + requestFile.getName());
-                        OutputType.json.save(buildObject(requestMediaType.getSchema(), componentSchemas), new FileOutputStream(requestFile, false));
+                        JsonUtil.saveToJson(buildObject(requestMediaType.getSchema(), componentSchemas), new FileOutputStream(requestFile, false));
                     }
                 } else {
                     System.out.println("### request has no content !?");
@@ -202,7 +202,7 @@ public class ConfigurationGenerator {
                         if (responseMediaType.getSchema() != null && (responseMediaType.getSchema().getProperties() != null || responseMediaType.getSchema().get$ref() != null || responseMediaType.getSchema().getAdditionalProperties() != null || "array".equals(responseMediaType.getSchema().getType()))) {
                             File responseFile = new File(pathDirectory, pathDirectory.getName() + "-" + code + ".json");
                             System.out.println("### generating response file: " + responseFile.getName());
-                            OutputType.json.save(buildObject(responseMediaType.getSchema(), componentSchemas), new FileOutputStream(responseFile, false));
+                            JsonUtil.saveToJson(buildObject(responseMediaType.getSchema(), componentSchemas), new FileOutputStream(responseFile, false));
                             String fileReference = "classpath:/" + pathDirectory.getName() + "/" + pathDirectory.getName() + "-" + code + ".json";
                             System.out.println("creating http response for file");
                             responseDecisionSteps.add(new CreateHttpResponse(pathDirectory.getName() + "-" + code, null, fileReference, parseLong(code), responseMediaTypeName));
