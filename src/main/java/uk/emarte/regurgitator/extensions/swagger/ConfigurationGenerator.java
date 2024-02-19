@@ -34,8 +34,8 @@ import static java.util.Collections.singletonList;
  */
 public class ConfigurationGenerator {
     private static final String USAGE_TEXT = "Usage: java uk.emarte.regurgitator.extensions.swagger.ConfigurationGenerator swaggerFile.[json|yaml] /outputDirectory";
-    private static final String PLAIN_TEXT = "text/plain";
     private static final String OK = "200";
+    private static final String PLAIN_TEXT = "text/plain";
     private static final String NUMERIC = "0-9";
     private static final String ALPHA_NUMERIC = "A-Za-z0-9-";
     private static final String REQUEST_METADATA_REQUEST_URI = "request-metadata:request-uri";
