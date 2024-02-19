@@ -49,12 +49,25 @@ public class ConfigurationGenerator {
         GET, PUT, POST, PATCH, DELETE, HEAD
     }
 
-    private enum outputTypes {
-        json, xml;
+    private enum OutputType {
+        json {
+            @Override
+            void save(Object object, FileOutputStream fileOutputStream) throws IOException {
+                JsonUtil.saveToJson(object, fileOutputStream);
+            }
+        },
+        xml {
+            @Override
+            void save(Object object, FileOutputStream fileOutputStream) throws ParserConfigurationException, TransformerException {
+                XmlUtil.saveToXml((RegurgitatorConfiguration) object, fileOutputStream);
+            }
+        };
 
         static boolean contains(String type) {
            return Arrays.stream(values()).anyMatch(ot -> ot.name().equals(type));
         }
+
+        abstract void save(Object object, FileOutputStream fileOutputStream) throws IOException, ParserConfigurationException, TransformerException;
     }
 
     /**
@@ -78,11 +91,11 @@ public class ConfigurationGenerator {
      * NOTE: both parameters need to exist.
      * @param swaggerFile an open api 'swagger' file from which to generate configuration
      * @param outputDirectory a directory into which to save the configuration files
-     * @param outputType the desired document type for the configuration files [json|xml]
+     * @param outputTypeStr the desired document type for the configuration files [json|xml]
      * @throws GenerationException if a problem is encountered whilst generating the configuration
      */
-    public static void generateConfiguration(File swaggerFile, File outputDirectory, String outputType) throws GenerationException {
-         if (!(swaggerFile.exists() && outputDirectory.isDirectory() && outputDirectory.exists() && outputTypes.contains(outputType))) {
+    public static void generateConfiguration(File swaggerFile, File outputDirectory, String outputTypeStr) throws GenerationException {
+         if (!(swaggerFile.exists() && outputDirectory.isDirectory() && outputDirectory.exists() && OutputType.contains(outputTypeStr))) {
              if(!swaggerFile.exists()) {
                  System.err.println("Swagger file does not exist");
              }
@@ -95,13 +108,15 @@ public class ConfigurationGenerator {
                  System.err.println("Output directory does not exist");
              }
 
-             if(!outputTypes.contains(outputType)) {
-                 System.err.println("Invalid output type: " + outputType);
+             if(!OutputType.contains(outputTypeStr)) {
+                 System.err.println("Invalid output type: " + outputTypeStr);
              }
 
              System.err.println(USAGE_TEXT);
              System.exit(1);
          }
+
+         OutputType outputType = OutputType.valueOf(outputTypeStr);
 
         try {
             System.out.println("parsing open api file: " + swaggerFile.getName());
@@ -132,21 +147,14 @@ public class ConfigurationGenerator {
             Decision decision = new Decision("decision-1", steps, rules, defaultStepId);
 
             System.out.println("### saving routing configuration");
-            RegurgitatorConfiguration regurgitatorConfiguration = new RegurgitatorConfiguration(singletonList(decision));
-            FileOutputStream fileOutputStream = new FileOutputStream(new File(outputDirectory, "regurgitator-configuration." + outputType), false);
-
-            if(outputType.equals("json")) {
-                JsonUtil.saveToJson(regurgitatorConfiguration, fileOutputStream);
-            } else {
-                XmlUtil.saveToXml(regurgitatorConfiguration, fileOutputStream);
-            }
+            outputType.save(new RegurgitatorConfiguration(singletonList(decision)), new FileOutputStream(new File(outputDirectory, "regurgitator-configuration." + outputType), false));
         } catch (Exception e) {
             throw new GenerationException("Error generating configuration", e);
         }
     }
 
     @SuppressWarnings({"rawtypes", "ResultOfMethodCallIgnored"})
-    private static void processOperation(Operation operation, String path, PathItem pathItem, Method method, List<Step> steps, List<Rule> rules, Map<String, Schema> componentSchemas, File outputDirectory, String outputType) throws IOException, ParserConfigurationException, TransformerException {
+    private static void processOperation(Operation operation, String path, PathItem pathItem, Method method, List<Step> steps, List<Rule> rules, Map<String, Schema> componentSchemas, File outputDirectory, OutputType outputType) throws IOException, ParserConfigurationException, TransformerException {
         if (operation != null) {
             System.out.println("processing route " + method + " " + path);
 
@@ -168,7 +176,7 @@ public class ConfigurationGenerator {
                         pathDirectory.mkdirs();
                         File requestFile = new File(pathDirectory, pathDirectory.getName() + "-REQ.json");
                         System.out.println("### generating request file: " + requestFile.getName());
-                        JsonUtil.saveToJson(buildObject(requestMediaType.getSchema(), componentSchemas), new FileOutputStream(requestFile, false));
+                        OutputType.json.save(buildObject(requestMediaType.getSchema(), componentSchemas), new FileOutputStream(requestFile, false));
                     }
                 } else {
                     System.out.println("### request has no content !?");
@@ -184,8 +192,7 @@ public class ConfigurationGenerator {
             if (responses != null) {
                 for (String code : responses.keySet()) {
                     System.out.println("### " + code + " response");
-                    ApiResponse apiResponse = responses.get(code);
-                    Content responseContent = apiResponse.getContent();
+                    Content responseContent = responses.get(code).getContent();
 
                     if (responseContent != null && responseContent.size() > 0) {
                         String responseMediaTypeName = responseContent.keySet().iterator().next();
@@ -195,7 +202,7 @@ public class ConfigurationGenerator {
                         if (responseMediaType.getSchema() != null && (responseMediaType.getSchema().getProperties() != null || responseMediaType.getSchema().get$ref() != null || responseMediaType.getSchema().getAdditionalProperties() != null || "array".equals(responseMediaType.getSchema().getType()))) {
                             File responseFile = new File(pathDirectory, pathDirectory.getName() + "-" + code + ".json");
                             System.out.println("### generating response file: " + responseFile.getName());
-                            JsonUtil.saveToJson(buildObject(responseMediaType.getSchema(), componentSchemas), new FileOutputStream(responseFile, false));
+                            OutputType.json.save(buildObject(responseMediaType.getSchema(), componentSchemas), new FileOutputStream(responseFile, false));
                             String fileReference = "classpath:/" + pathDirectory.getName() + "/" + pathDirectory.getName() + "-" + code + ".json";
                             System.out.println("creating http response for file");
                             responseDecisionSteps.add(new CreateHttpResponse(pathDirectory.getName() + "-" + code, null, fileReference, parseLong(code), responseMediaTypeName));
@@ -228,13 +235,7 @@ public class ConfigurationGenerator {
             RegurgitatorConfiguration regurgitatorConfiguration = new RegurgitatorConfiguration(stepsForConfiguration);
             File configFile = new File(pathDirectory, "regurgitator-configuration." + outputType);
             System.out.println("### generating config file: " + pathDirectory.getName() + "/" + configFile.getName());
-            FileOutputStream fileOutputStream = new FileOutputStream(configFile, false);
-
-            if(outputType.equals("json")) {
-                JsonUtil.saveToJson(regurgitatorConfiguration, fileOutputStream);
-            } else {
-                XmlUtil.saveToXml(regurgitatorConfiguration, fileOutputStream);
-            }
+            outputType.save(regurgitatorConfiguration, new FileOutputStream(configFile, false));
 
             System.out.println("creating sequence ref step");
             String stepId = "step-" + (steps.size() + 1);
