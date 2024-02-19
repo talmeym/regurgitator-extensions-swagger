@@ -5,8 +5,13 @@
 package uk.emarte.regurgitator.extensions.swagger;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 
-class ExtractProcessor {
+import static uk.emarte.regurgitator.extensions.swagger.XmlUtil.RG;
+import static uk.emarte.regurgitator.extensions.swagger.XmlUtil.addAttributeIfPresent;
+
+class ExtractProcessor implements XmlAware {
     @JsonProperty private final String kind = "extract-processor";
     @JsonProperty private final String format;
     @JsonProperty private final int index;
@@ -14,5 +19,13 @@ class ExtractProcessor {
     ExtractProcessor(String format, int index) {
         this.format = format;
         this.index = index;
+    }
+
+    @Override
+    public Element toXml(Document document, Element parentElement) {
+        Element element = document.createElement(RG + kind);
+        addAttributeIfPresent(element, "format", format);
+        addAttributeIfPresent(element, "index", "" + index);
+        return element;
     }
 }

@@ -7,6 +7,11 @@ package uk.emarte.regurgitator.extensions.swagger;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+
+import static uk.emarte.regurgitator.extensions.swagger.XmlUtil.RG;
+import static uk.emarte.regurgitator.extensions.swagger.XmlUtil.addAttributeIfPresent;
 
 @JsonInclude(Include.NON_NULL)
 class CreateParameter implements Step {
@@ -19,5 +24,18 @@ class CreateParameter implements Step {
         this.name = name;
         this.source = source;
         this.processor = processor;
+    }
+
+    @Override
+    public Element toXml(Document document, Element parentElement) {
+        Element element = document.createElement(RG + kind);
+        addAttributeIfPresent(element, "name", name);
+        addAttributeIfPresent(element, "source", source);
+
+        if(processor != null) {
+            element.appendChild(processor.toXml(document, element));
+        }
+
+        return element;
     }
 }

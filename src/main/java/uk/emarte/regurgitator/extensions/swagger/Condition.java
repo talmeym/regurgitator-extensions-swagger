@@ -6,11 +6,15 @@ package uk.emarte.regurgitator.extensions.swagger;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+import static uk.emarte.regurgitator.extensions.swagger.XmlUtil.RG;
+import static uk.emarte.regurgitator.extensions.swagger.XmlUtil.addAttributeIfPresent;
 
 @JsonInclude(NON_NULL)
-class Condition {
+class Condition implements XmlAware {
     @JsonProperty private final String source;
     @JsonProperty private final String equals;
     @JsonProperty private final String matches;
@@ -19,5 +23,14 @@ class Condition {
         this.source = source;
         this.equals = equals;
         this.matches = matches;
+    }
+
+    @Override
+    public Element toXml(Document document, Element parentElement) {
+        Element element = document.createElement(RG + "condition");
+        addAttributeIfPresent(element, "source", source);
+        addAttributeIfPresent(element, "equals", equals);
+        addAttributeIfPresent(element, "matches", matches);
+        return element;
     }
 }

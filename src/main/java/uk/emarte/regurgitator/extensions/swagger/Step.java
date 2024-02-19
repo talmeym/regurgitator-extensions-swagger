@@ -4,6 +4,5 @@
  */
 package uk.emarte.regurgitator.extensions.swagger;
 
-interface Step {
-
+interface Step extends XmlAware {
 }

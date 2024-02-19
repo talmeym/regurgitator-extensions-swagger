@@ -7,6 +7,11 @@ package uk.emarte.regurgitator.extensions.swagger;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+
+import static uk.emarte.regurgitator.extensions.swagger.XmlUtil.RGW;
+import static uk.emarte.regurgitator.extensions.swagger.XmlUtil.addAttributeIfPresent;
 
 @JsonInclude(Include.NON_NULL)
 class CreateHttpResponse implements Step {
@@ -23,5 +28,16 @@ class CreateHttpResponse implements Step {
         this.file = file;
         this.statusCode = statusCode;
         this.contentType = contentType;
+    }
+
+    @Override
+    public Element toXml(Document document, Element parentElement) {
+        Element element = document.createElement(RGW + kind);
+        addAttributeIfPresent(element, "id", id);
+        addAttributeIfPresent(element, "value", value);
+        addAttributeIfPresent(element, "file", file);
+        addAttributeIfPresent(element, "status-code", "" + statusCode);
+        addAttributeIfPresent(element, "content-type", contentType);
+        return element;
     }
 }
