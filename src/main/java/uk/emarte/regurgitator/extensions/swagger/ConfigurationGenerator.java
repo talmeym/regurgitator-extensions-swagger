@@ -15,7 +15,6 @@ import io.swagger.v3.oas.models.media.ObjectSchema;
 import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.oas.models.parameters.Parameter;
 import io.swagger.v3.oas.models.parameters.RequestBody;
-import io.swagger.v3.oas.models.responses.ApiResponse;
 import io.swagger.v3.oas.models.responses.ApiResponses;
 import io.swagger.v3.parser.core.models.SwaggerParseResult;
 
@@ -160,27 +159,11 @@ public class ConfigurationGenerator {
 
             File pathDirectory = new File(outputDirectory, method + path.replace("/", SLASH_SUBSTITUTE).replace("{", CURLY_BRACE_SUBSTITUTE).replace("}", CURLY_BRACE_SUBSTITUTE));
             pathDirectory.mkdirs();
-
             RequestBody requestBody = operation.getRequestBody();
 
             if(requestBody != null) {
                 System.out.println("### request");
-                Content requestContent = requestBody.getContent();
-
-                if (requestContent != null && requestContent.size() > 0) {
-                    String requestMediaTypeName = requestContent.keySet().iterator().next();
-                    System.out.println("### media type " + requestMediaTypeName);
-                    MediaType requestMediaType = requestContent.get(requestMediaTypeName);
-
-                    if (requestMediaType.getSchema() != null && (requestMediaType.getSchema().getProperties() != null || requestMediaType.getSchema().get$ref() != null || requestMediaType.getSchema().getAdditionalProperties() != null || "array".equals(requestMediaType.getSchema().getType()))) {
-                        pathDirectory.mkdirs();
-                        File requestFile = new File(pathDirectory, pathDirectory.getName() + "-REQ.json");
-                        System.out.println("### generating request file: " + requestFile.getName());
-                        JsonUtil.saveToJson(buildObject(requestMediaType.getSchema(), componentSchemas), new FileOutputStream(requestFile, false));
-                    }
-                } else {
-                    System.out.println("### request has no content !?");
-                }
+                processRequest(requestBody.getContent(), componentSchemas, pathDirectory);
             }
 
             ApiResponses responses = operation.getResponses();
@@ -191,31 +174,8 @@ public class ConfigurationGenerator {
 
             if (responses != null) {
                 for (String code : responses.keySet()) {
-                    System.out.println("### " + code + " response");
-                    Content responseContent = responses.get(code).getContent();
-
-                    if (responseContent != null && responseContent.size() > 0) {
-                        String responseMediaTypeName = responseContent.keySet().iterator().next();
-                        System.out.println("### media type " + responseMediaTypeName);
-                        MediaType responseMediaType = responseContent.get(responseMediaTypeName);
-
-                        if (responseMediaType.getSchema() != null && (responseMediaType.getSchema().getProperties() != null || responseMediaType.getSchema().get$ref() != null || responseMediaType.getSchema().getAdditionalProperties() != null || "array".equals(responseMediaType.getSchema().getType()))) {
-                            File responseFile = new File(pathDirectory, pathDirectory.getName() + "-" + code + ".json");
-                            System.out.println("### generating response file: " + responseFile.getName());
-                            JsonUtil.saveToJson(buildObject(responseMediaType.getSchema(), componentSchemas), new FileOutputStream(responseFile, false));
-                            String fileReference = "classpath:/" + pathDirectory.getName() + "/" + pathDirectory.getName() + "-" + code + ".json";
-                            System.out.println("creating http response for file");
-                            responseDecisionSteps.add(new CreateHttpResponse(pathDirectory.getName() + "-" + code, null, fileReference, parseLong(code), responseMediaTypeName));
-                            System.out.println("creating decision rule for file");
-                            responseDecisionRules.add(new Rule(pathDirectory.getName() + "-" + code, singletonList(new Condition(REQUEST_HEADERS_MOCK_RESPONSE_CODE, code, null))));
-                            responseCreated = true;
-                        }
-                    } else {
-                        System.out.println("### no media type ");
-                        System.out.println("creating http response without file");
-                        responseDecisionSteps.add(new CreateHttpResponse(pathDirectory.getName() + "-" + code, "no content", null, parseLong(code), PLAIN_TEXT));
-                        responseDecisionRules.add(new Rule(pathDirectory.getName() + "-" + code, singletonList(new Condition(REQUEST_HEADERS_MOCK_RESPONSE_CODE, code, null))));
-                    }
+                    boolean result = processResponse(code, responses.get(code).getContent(), responseDecisionSteps, responseDecisionRules, componentSchemas, pathDirectory);
+                    responseCreated = responseCreated || result;
                 }
             }
 
@@ -248,6 +208,53 @@ public class ConfigurationGenerator {
             System.out.println("creating routing rule");
             rules.add(new Rule(stepId, asList(methodCondition, pathCondition)));
         }
+    }
+
+    private static void processRequest(Content requestContent, Map<String, Schema> componentSchemas, File pathDirectory) throws IOException {
+        System.out.println("### request");
+
+        if (requestContent != null && requestContent.size() > 0) {
+            String requestMediaTypeName = requestContent.keySet().iterator().next();
+            System.out.println("### media type " + requestMediaTypeName);
+            MediaType requestMediaType = requestContent.get(requestMediaTypeName);
+
+            if (requestMediaType.getSchema() != null && (requestMediaType.getSchema().getProperties() != null || requestMediaType.getSchema().get$ref() != null || requestMediaType.getSchema().getAdditionalProperties() != null || "array".equals(requestMediaType.getSchema().getType()))) {
+                File requestFile = new File(pathDirectory, pathDirectory.getName() + "-REQ.json");
+                System.out.println("### generating request file: " + requestFile.getName());
+                JsonUtil.saveToJson(buildObject(requestMediaType.getSchema(), componentSchemas), new FileOutputStream(requestFile, false));
+            }
+        } else {
+            System.out.println("### request has no content !?");
+        }
+    }
+
+    private static boolean processResponse(String code, Content responseContent, List<Step> responseDecisionSteps, List<Rule> responseDecisionRules, Map<String, Schema> componentSchemas, File pathDirectory) throws IOException {
+        System.out.println("### " + code + " response");
+
+        if (responseContent != null && responseContent.size() > 0) {
+            String responseMediaTypeName = responseContent.keySet().iterator().next();
+            System.out.println("### media type " + responseMediaTypeName);
+            MediaType responseMediaType = responseContent.get(responseMediaTypeName);
+
+            if (responseMediaType.getSchema() != null && (responseMediaType.getSchema().getProperties() != null || responseMediaType.getSchema().get$ref() != null || responseMediaType.getSchema().getAdditionalProperties() != null || "array".equals(responseMediaType.getSchema().getType()))) {
+                File responseFile = new File(pathDirectory, pathDirectory.getName() + "-" + code + ".json");
+                System.out.println("### generating response file: " + responseFile.getName());
+                JsonUtil.saveToJson(buildObject(responseMediaType.getSchema(), componentSchemas), new FileOutputStream(responseFile, false));
+                String fileReference = "classpath:/" + pathDirectory.getName() + "/" + pathDirectory.getName() + "-" + code + ".json";
+                System.out.println("creating http response for file");
+                responseDecisionSteps.add(new CreateHttpResponse(pathDirectory.getName() + "-" + code, null, fileReference, parseLong(code), responseMediaTypeName));
+                System.out.println("creating decision rule for file");
+                responseDecisionRules.add(new Rule(pathDirectory.getName() + "-" + code, singletonList(new Condition(REQUEST_HEADERS_MOCK_RESPONSE_CODE, code, null))));
+                return true;
+            }
+        } else {
+            System.out.println("### no media type ");
+            System.out.println("creating http response without file");
+            responseDecisionSteps.add(new CreateHttpResponse(pathDirectory.getName() + "-" + code, "no content", null, parseLong(code), PLAIN_TEXT));
+            responseDecisionRules.add(new Rule(pathDirectory.getName() + "-" + code, singletonList(new Condition(REQUEST_HEADERS_MOCK_RESPONSE_CODE, code, null))));
+        }
+
+        return false;
     }
 
     private static Condition buildPathCondition(String path, List<Parameter> parameters) {
