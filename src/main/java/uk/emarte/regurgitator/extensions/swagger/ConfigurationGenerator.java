@@ -27,25 +27,46 @@ import java.util.*;
 import static java.lang.Long.parseLong;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
+import static uk.emarte.regurgitator.extensions.swagger.XmlUtil.XMLNS_URL;
 
 /**
  * Generates regurgitator configuration from open api (v3) 'swagger' files
  */
 public class ConfigurationGenerator {
     private static final String USAGE_TEXT = "Usage: java uk.emarte.regurgitator.extensions.swagger.ConfigurationGenerator swaggerFile.[json|yaml] /outputDirectory";
+
     private static final String OK = "200";
-    private static final String PLAIN_TEXT = "text/plain";
+
     private static final String NUMERIC = "0-9";
     private static final String ALPHA_NUMERIC = "A-Za-z0-9-";
+
     private static final String REQUEST_METADATA_REQUEST_URI = "request-metadata:request-uri";
     private static final String REQUEST_METADATA_METHOD = "request-metadata:method";
     private static final String REQUEST_HEADERS_MOCK_RESPONSE_CODE = "request-headers:mock-response-code";
+
     private static final String SLASH_SUBSTITUTE = "%";
     private static final String CURLY_BRACE_SUBSTITUTE = "^";
-    public static final String APPLICATION_JSON = "application/json";
-    public static final String APPLICATION_XML = "application/xml";
-    public static final String JSON = "json";
-    public static final String XML = "xml";
+
+    private static final String PLAIN_TEXT = "text/plain";
+    private static final String APPLICATION_JSON = "application/json";
+    private static final String APPLICATION_XML = "application/xml";
+
+    private static final String JSON = "json";
+    private static final String XML = "xml";
+
+    private static final String STRING = "string";
+    private static final String INTEGER = "integer";
+    private static final String DOUBLE = "double";
+    private static final String FLOAT = "float";
+    private static final String NUMBER = "number";
+    private static final String OBJECT = "object";
+    private static final String BOOLEAN = "boolean";
+    private static final String INT_32 = "int32";
+    private static final String INT_64 = "int64";
+    private static final String ARRAY = "array";
+
+    private static final String FOOBAR = "foobar";
+    private static final String ZERO = "0";
 
     private enum Method {
         GET, PUT, POST, PATCH, DELETE, HEAD
@@ -97,6 +118,7 @@ public class ConfigurationGenerator {
      * @param outputTypeStr   the desired document type for the configuration files [json|xml]
      * @throws GenerationException if a problem is encountered whilst generating the configuration
      */
+    @SuppressWarnings("rawtypes")
     public static void generateConfiguration(File swaggerFile, File outputDirectory, String outputTypeStr) throws GenerationException {
         if (!(swaggerFile.exists() && outputDirectory.isDirectory() && outputDirectory.exists() && OutputType.contains(outputTypeStr))) {
             if (!swaggerFile.exists()) {
@@ -143,11 +165,11 @@ public class ConfigurationGenerator {
             }
 
             System.out.println("creating routing default step");
-            String defaultStepId = "step-" + (steps.size() + 1);
+            String defaultStepId = "default-route";
             steps.add(new CreateHttpResponse(defaultStepId, "regurgitator : " + "unmapped operation", null, 500L, PLAIN_TEXT));
 
             System.out.println("creating routing decision");
-            Decision decision = new Decision("decision-1", steps, rules, defaultStepId);
+            Decision decision = new Decision("routing-decision", steps, rules, defaultStepId);
 
             System.out.println("### saving routing configuration");
             outputType.save(new RegurgitatorConfiguration(singletonList(decision)), new FileOutputStream(new File(outputDirectory, "regurgitator-configuration." + outputType), false));
@@ -202,7 +224,7 @@ public class ConfigurationGenerator {
             outputType.save(regurgitatorConfiguration, new FileOutputStream(configFile, false));
 
             System.out.println("creating sequence ref step");
-            String stepId = "step-" + (steps.size() + 1);
+            String stepId = "route-" + (steps.size() + 1);
             steps.add(new SequenceRef(stepId, "classpath:/" + pathDirectory.getName() + "/regurgitator-configuration." + outputType));
 
             System.out.println("creating path condition");
@@ -214,6 +236,7 @@ public class ConfigurationGenerator {
         }
     }
 
+    @SuppressWarnings("rawtypes")
     private static void processRequest(Content requestContent, Map<String, Schema> componentSchemas, File pathDirectory) throws IOException, ParserConfigurationException, TransformerException {
         System.out.println("### request");
 
@@ -224,7 +247,7 @@ public class ConfigurationGenerator {
             if (APPLICATION_JSON.equals(requestMediaTypeName) || APPLICATION_XML.equals(requestMediaTypeName)) {
                 MediaType requestMediaType = requestContent.get(requestMediaTypeName);
 
-                if (requestMediaType.getSchema() != null && (requestMediaType.getSchema().getProperties() != null || requestMediaType.getSchema().get$ref() != null || requestMediaType.getSchema().getAdditionalProperties() != null || "array".equals(requestMediaType.getSchema().getType()))) {
+                if (requestMediaType.getSchema() != null && (requestMediaType.getSchema().getProperties() != null || requestMediaType.getSchema().get$ref() != null || requestMediaType.getSchema().getAdditionalProperties() != null || ARRAY.equals(requestMediaType.getSchema().getType()))) {
                     File requestFile = new File(pathDirectory, pathDirectory.getName() + "-REQ." + (APPLICATION_JSON.equals(requestMediaTypeName) ? JSON : XML));
                     System.out.println("### generating request file: " + requestFile.getName());
 
@@ -243,6 +266,7 @@ public class ConfigurationGenerator {
         }
     }
 
+    @SuppressWarnings("rawtypes")
     private static boolean processResponse(String code, Content responseContent, List<Step> responseDecisionSteps, List<Rule> responseDecisionRules, Map<String, Schema> componentSchemas, File pathDirectory) throws IOException, ParserConfigurationException, TransformerException {
         System.out.println("### " + code + " response");
 
@@ -253,7 +277,7 @@ public class ConfigurationGenerator {
             if (APPLICATION_JSON.equals(responseMediaTypeName) || APPLICATION_XML.equals(responseMediaTypeName)) {
                 MediaType responseMediaType = responseContent.get(responseMediaTypeName);
 
-                if (responseMediaType.getSchema() != null && (responseMediaType.getSchema().getProperties() != null || responseMediaType.getSchema().get$ref() != null || responseMediaType.getSchema().getAdditionalProperties() != null || "array".equals(responseMediaType.getSchema().getType()))) {
+                if (responseMediaType.getSchema() != null && (responseMediaType.getSchema().getProperties() != null || responseMediaType.getSchema().get$ref() != null || responseMediaType.getSchema().getAdditionalProperties() != null || ARRAY.equals(responseMediaType.getSchema().getType()))) {
                     File responseFile = new File(pathDirectory, pathDirectory.getName() + "-" + code + "." + (APPLICATION_JSON.equals(responseMediaTypeName) ? JSON : XML));
                     System.out.println("### generating response file: " + responseFile.getName());
 
@@ -304,7 +328,7 @@ public class ConfigurationGenerator {
                 builder.append(separators.remove(0).replace("/", "\\/"));
 
                 if (!types.isEmpty()) {
-                    builder.append("([").append("integer".equals(types.remove(0)) ? NUMERIC : ALPHA_NUMERIC).append("]").append(requireds.remove(0) ? "+" : "*").append(")");
+                    builder.append("([").append(INTEGER.equals(types.remove(0)) ? NUMERIC : ALPHA_NUMERIC).append("]").append(requireds.remove(0) ? "+" : "*").append(")");
                 }
             }
 
@@ -362,7 +386,7 @@ public class ConfigurationGenerator {
 
     private static void processPathParameter(String id, List<Parameter> parameters, List<String> types, List<Boolean> requireds) {
         Optional<Parameter> firstParam = parameters.stream().filter(p -> id.equals(p.getName()) && "path".equals(p.getIn())).findFirst();
-        types.add(firstParam.isPresent() ? firstParam.get().getSchema().getType() : "string");
+        types.add(firstParam.isPresent() ? firstParam.get().getSchema().getType() : STRING);
         requireds.add(firstParam.isPresent() ? firstParam.get().getRequired() : true);
     }
 
@@ -382,43 +406,43 @@ public class ConfigurationGenerator {
                 Schema<?> propertySchema = properties.get(name);
                 String type = propertySchema.getType();
 
-                if ("array".equals(type)) {
+                if (ARRAY.equals(type)) {
 
                     objectContents.put(name, singletonList(buildJsonObject(propertySchema.getItems(), componentSchemas)));
-                } else if ("integer".equals(type)) {
-                    if ("int32".equals(propertySchema.getFormat()) || propertySchema.getFormat() == null) {
-                        objectContents.put(name, Integer.parseInt(propertySchema.getExample() != null ? "" + propertySchema.getExample() : "0"));
+                } else if (INTEGER.equals(type)) {
+                    if (INT_32.equals(propertySchema.getFormat()) || propertySchema.getFormat() == null) {
+                        objectContents.put(name, Integer.parseInt(propertySchema.getExample() != null ? "" + propertySchema.getExample() : ZERO));
                     }
-                    if ("int64".equals(propertySchema.getFormat())) {
-                        objectContents.put(name, Long.parseLong(propertySchema.getExample() != null ? "" + propertySchema.getExample() : "0"));
+                    if (INT_64.equals(propertySchema.getFormat())) {
+                        objectContents.put(name, Long.parseLong(propertySchema.getExample() != null ? "" + propertySchema.getExample() : ZERO));
                     }
-                } else if ("number".equals(type)) {
+                } else if (NUMBER.equals(type)) {
                     if (propertySchema.getFormat() == null) {
-                        objectContents.put(name, Integer.parseInt(propertySchema.getExample() != null ? "" + propertySchema.getExample() : "0"));
+                        objectContents.put(name, Integer.parseInt(propertySchema.getExample() != null ? "" + propertySchema.getExample() : ZERO));
                     }
-                    if ("float".equals(propertySchema.getFormat())) {
-                        objectContents.put(name, Float.parseFloat(propertySchema.getExample() != null ? "" + propertySchema.getExample() : "0"));
+                    if (FLOAT.equals(propertySchema.getFormat())) {
+                        objectContents.put(name, Float.parseFloat(propertySchema.getExample() != null ? "" + propertySchema.getExample() : ZERO));
                     }
-                    if ("double".equals(propertySchema.getFormat())) {
-                        objectContents.put(name, Double.parseDouble(propertySchema.getExample() != null ? "" + propertySchema.getExample() : "0"));
+                    if (DOUBLE.equals(propertySchema.getFormat())) {
+                        objectContents.put(name, Double.parseDouble(propertySchema.getExample() != null ? "" + propertySchema.getExample() : ZERO));
                     }
-                } else if ("object".equals(type)) {
+                } else if (OBJECT.equals(type)) {
                     objectContents.put(name, buildJsonObject(propertySchema, componentSchemas));
-                } else if ("boolean".equals(type)) {
+                } else if (BOOLEAN.equals(type)) {
                     objectContents.put(name, Boolean.parseBoolean("" + (propertySchema.getExample() != null ? propertySchema.getExample() : true)));
                 } else if (propertySchema.get$ref() != null) {
                     String $ref = propertySchema.get$ref();
                     $ref = $ref.contains("/") ? $ref.substring($ref.lastIndexOf("/") + 1) : $ref;
                     objectContents.put(name, buildJsonObject(componentSchemas.get($ref), componentSchemas));
                 } else { // assume string
-                    objectContents.put(name, "" + (propertySchema.getExample() != null ? propertySchema.getExample() : "foobar"));
+                    objectContents.put(name, "" + (propertySchema.getExample() != null ? propertySchema.getExample() : FOOBAR));
                 }
             }
 
             return objectContents;
-        } else if ("array".equals(schema.getType())) {
+        } else if (ARRAY.equals(schema.getType())) {
             return singletonList(buildJsonObject(schema.getItems(), componentSchemas));
-        } else if ("string".equals(schema.getType())) {
+        } else if (STRING.equals(schema.getType())) {
             return schema.getExample();
         }
 
@@ -446,7 +470,7 @@ public class ConfigurationGenerator {
             Element element = document.createElement(prefix != null && prefix.length() > 0 ? prefix + ":" + elementName : elementName);
 
             if(prefix != null && namespace != null) {
-                element.setAttributeNS("http://www.w3.org/2000/xmlns/", "xmlns:" + prefix, namespace);
+                element.setAttributeNS(XMLNS_URL, "xmlns:" + prefix, namespace);
             }
 
             Map<String, Schema> properties = schema.getProperties() != null ? schema.getProperties() : ((ObjectSchema) schema.getAdditionalProperties()).getProperties();
@@ -457,7 +481,7 @@ public class ConfigurationGenerator {
                 XML propertyXml = propertySchema.getXml();
                 String xmlName = propertyXml != null && propertyXml.getName() != null ? propertyXml.getName() : name;
 
-                if ("array".equals(type)) {
+                if (ARRAY.equals(type)) {
                     boolean wrapped = propertyXml != null && propertyXml.getWrapped() != null && propertyXml.getWrapped();
                     Element elementToUse = element;
 
@@ -470,48 +494,48 @@ public class ConfigurationGenerator {
                     io.swagger.v3.oas.models.media.XML itemsXml = propertySchema.getItems().getXml();
                     String itemName = itemsXml != null && itemsXml.getName() != null ? itemsXml.getName() : name;
                     elementToUse.appendChild(buildXmlObject(itemName, propertySchema.getItems(), document, componentSchemas));
-                } else if ("integer".equals(type)) {
+                } else if (INTEGER.equals(type)) {
                     String value = "";
 
-                    if ("int32".equals(propertySchema.getFormat()) || propertySchema.getFormat() == null) {
-                        value = "" + Integer.parseInt(propertySchema.getExample() != null ? "" + propertySchema.getExample() : "0");
+                    if (INT_32.equals(propertySchema.getFormat()) || propertySchema.getFormat() == null) {
+                        value = "" + Integer.parseInt(propertySchema.getExample() != null ? "" + propertySchema.getExample() : ZERO);
                     }
-                    if ("int64".equals(propertySchema.getFormat())) {
-                        value = "" + Long.parseLong(propertySchema.getExample() != null ? "" + propertySchema.getExample() : "0");
+                    if (INT_64.equals(propertySchema.getFormat())) {
+                        value = "" + Long.parseLong(propertySchema.getExample() != null ? "" + propertySchema.getExample() : ZERO);
                     }
 
                     xmlChildElementOrAttribute(xmlName, value, propertyXml, document, element);
-                } else if ("number".equals(type)) {
+                } else if (NUMBER.equals(type)) {
                     String value = "";
 
                     if (propertySchema.getFormat() == null) {
-                        value = "" + Integer.parseInt(propertySchema.getExample() != null ? "" + propertySchema.getExample() : "0");
+                        value = "" + Integer.parseInt(propertySchema.getExample() != null ? "" + propertySchema.getExample() : ZERO);
                     }
-                    if ("float".equals(propertySchema.getFormat())) {
-                        value = "" + Float.parseFloat(propertySchema.getExample() != null ? "" + propertySchema.getExample() : "0");
+                    if (FLOAT.equals(propertySchema.getFormat())) {
+                        value = "" + Float.parseFloat(propertySchema.getExample() != null ? "" + propertySchema.getExample() : ZERO);
                     }
-                    if ("double".equals(propertySchema.getFormat())) {
-                        value = "" + Double.parseDouble(propertySchema.getExample() != null ? "" + propertySchema.getExample() : "0");
+                    if (DOUBLE.equals(propertySchema.getFormat())) {
+                        value = "" + Double.parseDouble(propertySchema.getExample() != null ? "" + propertySchema.getExample() : ZERO);
                     }
 
                     xmlChildElementOrAttribute(xmlName, value, propertyXml, document, element);
-                } else if ("object".equals(type)) {
+                } else if (OBJECT.equals(type)) {
                     element.appendChild(buildXmlObject(xmlName, propertySchema, document, componentSchemas));
-                } else if ("boolean".equals(type)) {
+                } else if (BOOLEAN.equals(type)) {
                     String value = "" + Boolean.parseBoolean("" + (propertySchema.getExample() != null ? propertySchema.getExample() : true));
                     xmlChildElementOrAttribute(xmlName, value, propertyXml, document, element);
                 } else if (propertySchema.get$ref() != null) {
                     element.appendChild(buildXmlObject(xmlName, propertySchema, document, componentSchemas));
                 } else { // assume string
-                    String value = "" + (propertySchema.getExample() != null ? propertySchema.getExample() : "foobar");
+                    String value = "" + (propertySchema.getExample() != null ? propertySchema.getExample() : FOOBAR);
                     xmlChildElementOrAttribute(xmlName, value, propertyXml, document, element);
                 }
             }
 
             return element;
-        } else if ("string".equals(schema.getType()) || "integer".equals(schema.getType())) {
+        } else if (STRING.equals(schema.getType()) || INTEGER.equals(schema.getType())) {
             Element element = document.createElement(prefix != null && prefix.length() > 0 ? prefix + ":" + elementName : elementName);
-            element.appendChild(document.createTextNode("" + (schema.getExample() != null ? schema.getExample() : ("integer".equals(schema.getType()) ? "0" : "foobar"))));
+            element.appendChild(document.createTextNode("" + (schema.getExample() != null ? schema.getExample() : (INTEGER.equals(schema.getType()) ? ZERO : FOOBAR))));
             return element;
         }
 

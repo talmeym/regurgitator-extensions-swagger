@@ -15,10 +15,12 @@ import javax.xml.transform.stream.StreamResult;
 import java.io.FileOutputStream;
 
 public class XmlUtil {
-    static String RG = "rg:";
-    static String RGW = "rgw:";
-    static String REGURG_CORE_NS = "http://core.regurgitator.emarte.uk";
-    static String REGURG_EXT_WEB_NS = "http://web.extensions.regurgitator.emarte.uk";
+    static final String RG = "rg:";
+    static final String RGW = "rgw:";
+    static final String REGURG_CORE_URL = "http://core.regurgitator.emarte.uk";
+    static final String REGURG_EXT_WEB_URL = "http://web.extensions.regurgitator.emarte.uk";
+    static final String XMLNS_URL = "http://www.w3.org/2000/xmlns/";
+    static final String XML_SCHEMA_URL = "http://www.w3.org/2001/XMLSchema-instance";
 
     static void addAttributeIfPresent(Element element, String name, String value) {
         if(value != null) {
