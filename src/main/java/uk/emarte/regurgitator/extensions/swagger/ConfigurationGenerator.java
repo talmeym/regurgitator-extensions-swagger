@@ -383,6 +383,7 @@ public class ConfigurationGenerator {
                 String type = propertySchema.getType();
 
                 if ("array".equals(type)) {
+
                     objectContents.put(name, singletonList(buildJsonObject(propertySchema.getItems(), componentSchemas)));
                 } else if ("integer".equals(type)) {
                     if ("int32".equals(propertySchema.getFormat()) || propertySchema.getFormat() == null) {
@@ -456,7 +457,20 @@ public class ConfigurationGenerator {
                 XML propertyXml = propertySchema.getXml();
 
                 if ("array".equals(type)) {
-                    //objectContents.put(name, singletonList(buildJsonObject(propertySchema.getItems(), componentSchemas)));
+                    boolean wrapped = propertyXml != null && propertyXml.getWrapped() != null && propertyXml.getWrapped();
+
+                    if(wrapped) {
+                        String nameToUse = propertyXml.getName() != null ? propertyXml.getName() : name;
+                        Element child = document.createElement(nameToUse);
+                        element.appendChild(child);
+                        io.swagger.v3.oas.models.media.XML itemsXml = propertySchema.getItems().getXml();
+                        nameToUse = itemsXml != null && itemsXml.getName() != null ? itemsXml.getName() : nameToUse;
+                        child.appendChild(buildXmlObject(nameToUse, propertySchema.getItems(), document, componentSchemas));
+                    } else {
+                        io.swagger.v3.oas.models.media.XML itemsXml = propertySchema.getItems().getXml();
+                        String nameToUse = itemsXml != null && itemsXml.getName() != null ? itemsXml.getName() : name;
+                        element.appendChild(buildXmlObject(nameToUse, propertySchema.getItems(), document, componentSchemas));
+                    }
                 } else if ("integer".equals(type)) {
                     String value = "";
 
@@ -469,18 +483,19 @@ public class ConfigurationGenerator {
 
                     xmlChildElementOrAttribute(name, value, propertyXml, document, element);
                 } else if ("number".equals(type)) {
-                    Element child = document.createElement(name);
-                    element.appendChild(child);
+                    String value = "";
 
                     if (propertySchema.getFormat() == null) {
-                        child.appendChild(document.createTextNode("" + Integer.parseInt(propertySchema.getExample() != null ? "" + propertySchema.getExample() : "0")));
+                        value = "" + Integer.parseInt(propertySchema.getExample() != null ? "" + propertySchema.getExample() : "0");
                     }
                     if ("float".equals(propertySchema.getFormat())) {
-                        child.appendChild(document.createTextNode("" + Float.parseFloat(propertySchema.getExample() != null ? "" + propertySchema.getExample() : "0")));
+                        value = "" + Float.parseFloat(propertySchema.getExample() != null ? "" + propertySchema.getExample() : "0");
                     }
                     if ("double".equals(propertySchema.getFormat())) {
-                        child.appendChild(document.createTextNode("" + Double.parseDouble(propertySchema.getExample() != null ? "" + propertySchema.getExample() : "0")));
+                        value = "" + Double.parseDouble(propertySchema.getExample() != null ? "" + propertySchema.getExample() : "0");
                     }
+
+                    xmlChildElementOrAttribute(name, value, propertyXml, document, element);
                 } else if ("object".equals(type)) {
                     element.appendChild(buildXmlObject(name, propertySchema, document, componentSchemas));
                 } else if ("boolean".equals(type)) {
@@ -498,9 +513,10 @@ public class ConfigurationGenerator {
         } else if ("array".equals(schema.getType())) {
             //return singletonList(buildJsonObject(schema.getItems(), componentSchemas));
             return document.createElement("");
-        } else if ("string".equals(schema.getType())) {
-            //return schema.getExample();
-            return document.createElement("");
+        } else if ("string".equals(schema.getType()) || "integer".equals(schema.getType())) {
+            Element element = document.createElement(prefix != null && prefix.length() > 0 ? prefix + ":" + elementName : elementName);
+            element.appendChild(document.createTextNode("" + (schema.getExample() != null ? schema.getExample() : ("integer".equals(schema.getType()) ? "0" : "foobar"))));
+            return element;
         }
 
         throw new IllegalStateException("Cannot construct object for schema");
