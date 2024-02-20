@@ -456,20 +456,23 @@ public class ConfigurationGenerator {
                 String type = propertySchema.getType();
                 XML propertyXml = propertySchema.getXml();
 
+                if(propertyXml != null && propertyXml.getName() != null) {
+                    name = propertyXml.getName();
+                }
+
                 if ("array".equals(type)) {
                     boolean wrapped = propertyXml != null && propertyXml.getWrapped() != null && propertyXml.getWrapped();
 
                     if(wrapped) {
-                        String nameToUse = propertyXml.getName() != null ? propertyXml.getName() : name;
-                        Element child = document.createElement(nameToUse);
+                        Element child = document.createElement(name);
                         element.appendChild(child);
                         io.swagger.v3.oas.models.media.XML itemsXml = propertySchema.getItems().getXml();
-                        nameToUse = itemsXml != null && itemsXml.getName() != null ? itemsXml.getName() : nameToUse;
-                        child.appendChild(buildXmlObject(nameToUse, propertySchema.getItems(), document, componentSchemas));
+                        String itemName = itemsXml != null && itemsXml.getName() != null ? itemsXml.getName() : name;
+                        child.appendChild(buildXmlObject(itemName, propertySchema.getItems(), document, componentSchemas));
                     } else {
                         io.swagger.v3.oas.models.media.XML itemsXml = propertySchema.getItems().getXml();
-                        String nameToUse = itemsXml != null && itemsXml.getName() != null ? itemsXml.getName() : name;
-                        element.appendChild(buildXmlObject(nameToUse, propertySchema.getItems(), document, componentSchemas));
+                        String itemName = itemsXml != null && itemsXml.getName() != null ? itemsXml.getName() : name;
+                        element.appendChild(buildXmlObject(itemName, propertySchema.getItems(), document, componentSchemas));
                     }
                 } else if ("integer".equals(type)) {
                     String value = "";
