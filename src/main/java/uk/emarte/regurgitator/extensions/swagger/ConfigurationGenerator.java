@@ -455,25 +455,21 @@ public class ConfigurationGenerator {
                 Schema<?> propertySchema = properties.get(name);
                 String type = propertySchema.getType();
                 XML propertyXml = propertySchema.getXml();
-
-                if(propertyXml != null && propertyXml.getName() != null) {
-                    name = propertyXml.getName();
-                }
+                String xmlName = propertyXml != null && propertyXml.getName() != null ? propertyXml.getName() : name;
 
                 if ("array".equals(type)) {
                     boolean wrapped = propertyXml != null && propertyXml.getWrapped() != null && propertyXml.getWrapped();
+                    Element elementToUse = element;
 
                     if(wrapped) {
-                        Element child = document.createElement(name);
+                        Element child = document.createElement(xmlName);
                         element.appendChild(child);
-                        io.swagger.v3.oas.models.media.XML itemsXml = propertySchema.getItems().getXml();
-                        String itemName = itemsXml != null && itemsXml.getName() != null ? itemsXml.getName() : name;
-                        child.appendChild(buildXmlObject(itemName, propertySchema.getItems(), document, componentSchemas));
-                    } else {
-                        io.swagger.v3.oas.models.media.XML itemsXml = propertySchema.getItems().getXml();
-                        String itemName = itemsXml != null && itemsXml.getName() != null ? itemsXml.getName() : name;
-                        element.appendChild(buildXmlObject(itemName, propertySchema.getItems(), document, componentSchemas));
+                        elementToUse = child;
                     }
+
+                    io.swagger.v3.oas.models.media.XML itemsXml = propertySchema.getItems().getXml();
+                    String itemName = itemsXml != null && itemsXml.getName() != null ? itemsXml.getName() : name;
+                    elementToUse.appendChild(buildXmlObject(itemName, propertySchema.getItems(), document, componentSchemas));
                 } else if ("integer".equals(type)) {
                     String value = "";
 
@@ -484,7 +480,7 @@ public class ConfigurationGenerator {
                         value = "" + Long.parseLong(propertySchema.getExample() != null ? "" + propertySchema.getExample() : "0");
                     }
 
-                    xmlChildElementOrAttribute(name, value, propertyXml, document, element);
+                    xmlChildElementOrAttribute(xmlName, value, propertyXml, document, element);
                 } else if ("number".equals(type)) {
                     String value = "";
 
@@ -498,24 +494,21 @@ public class ConfigurationGenerator {
                         value = "" + Double.parseDouble(propertySchema.getExample() != null ? "" + propertySchema.getExample() : "0");
                     }
 
-                    xmlChildElementOrAttribute(name, value, propertyXml, document, element);
+                    xmlChildElementOrAttribute(xmlName, value, propertyXml, document, element);
                 } else if ("object".equals(type)) {
-                    element.appendChild(buildXmlObject(name, propertySchema, document, componentSchemas));
+                    element.appendChild(buildXmlObject(xmlName, propertySchema, document, componentSchemas));
                 } else if ("boolean".equals(type)) {
                     String value = "" + Boolean.parseBoolean("" + (propertySchema.getExample() != null ? propertySchema.getExample() : true));
-                    xmlChildElementOrAttribute(name, value, propertyXml, document, element);
+                    xmlChildElementOrAttribute(xmlName, value, propertyXml, document, element);
                 } else if (propertySchema.get$ref() != null) {
-                    element.appendChild(buildXmlObject(name, propertySchema, document, componentSchemas));
+                    element.appendChild(buildXmlObject(xmlName, propertySchema, document, componentSchemas));
                 } else { // assume string
                     String value = "" + (propertySchema.getExample() != null ? propertySchema.getExample() : "foobar");
-                    xmlChildElementOrAttribute(name, value, propertyXml, document, element);
+                    xmlChildElementOrAttribute(xmlName, value, propertyXml, document, element);
                 }
             }
 
             return element;
-        } else if ("array".equals(schema.getType())) {
-            //return singletonList(buildJsonObject(schema.getItems(), componentSchemas));
-            return document.createElement("");
         } else if ("string".equals(schema.getType()) || "integer".equals(schema.getType())) {
             Element element = document.createElement(prefix != null && prefix.length() > 0 ? prefix + ":" + elementName : elementName);
             element.appendChild(document.createTextNode("" + (schema.getExample() != null ? schema.getExample() : ("integer".equals(schema.getType()) ? "0" : "foobar"))));
