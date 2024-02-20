@@ -3,13 +3,9 @@ package uk.emarte.regurgitator.extensions.swagger;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
-import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.transform.OutputKeys;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerException;
-import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.*;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import java.io.FileOutputStream;
@@ -27,10 +23,18 @@ public class XmlUtil {
     }
 
     static void saveToXml(RegurgitatorConfiguration configuration, FileOutputStream fileOutputStream) throws ParserConfigurationException, TransformerException {
+        Document document = newDocument();
+        saveElement(configuration.toXml(document, null), document, fileOutputStream);
+    }
+
+    static Document newDocument() throws ParserConfigurationException {
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         factory.setNamespaceAware(true);
-        Document document = factory.newDocumentBuilder().newDocument();
-        document.appendChild(configuration.toXml(document, null));
+        return factory.newDocumentBuilder().newDocument();
+    }
+
+    static void saveElement(Element element, Document document, FileOutputStream fileOutputStream) throws TransformerException {
+        document.appendChild(element);
         Transformer transformer = TransformerFactory.newInstance().newTransformer();
         transformer.setOutputProperty(OutputKeys.INDENT, "yes");
         transformer.transform(new DOMSource(document), new StreamResult(fileOutputStream));

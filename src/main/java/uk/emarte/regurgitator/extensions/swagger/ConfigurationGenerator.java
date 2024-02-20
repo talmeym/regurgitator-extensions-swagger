@@ -9,14 +9,13 @@ import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.PathItem;
 import io.swagger.v3.oas.models.Paths;
-import io.swagger.v3.oas.models.media.Content;
-import io.swagger.v3.oas.models.media.MediaType;
-import io.swagger.v3.oas.models.media.ObjectSchema;
-import io.swagger.v3.oas.models.media.Schema;
+import io.swagger.v3.oas.models.media.*;
 import io.swagger.v3.oas.models.parameters.Parameter;
 import io.swagger.v3.oas.models.parameters.RequestBody;
 import io.swagger.v3.oas.models.responses.ApiResponses;
 import io.swagger.v3.parser.core.models.SwaggerParseResult;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerException;
@@ -43,6 +42,10 @@ public class ConfigurationGenerator {
     private static final String REQUEST_HEADERS_MOCK_RESPONSE_CODE = "request-headers:mock-response-code";
     private static final String SLASH_SUBSTITUTE = "%";
     private static final String CURLY_BRACE_SUBSTITUTE = "^";
+    public static final String APPLICATION_JSON = "application/json";
+    public static final String APPLICATION_XML = "application/xml";
+    public static final String JSON = "json";
+    public static final String XML = "xml";
 
     private enum Method {
         GET, PUT, POST, PATCH, DELETE, HEAD
@@ -63,20 +66,20 @@ public class ConfigurationGenerator {
         };
 
         static boolean contains(String type) {
-           return Arrays.stream(values()).anyMatch(ot -> ot.name().equals(type));
+            return Arrays.stream(values()).anyMatch(ot -> ot.name().equals(type));
         }
 
         abstract void save(Object object, FileOutputStream fileOutputStream) throws IOException, ParserConfigurationException, TransformerException;
     }
 
     /**
-     * @see ConfigurationGenerator#generateConfiguration(File, File, String)
      * @param args input arguments - [0] open api 'swagger' file path, [1] output directory path, [2] output type
      * @throws GenerationException if a problem is encountered whilst generating the configuration
+     * @see ConfigurationGenerator#generateConfiguration(File, File, String)
      */
     @SuppressWarnings("rawtypes")
     public static void main(String[] args) throws GenerationException {
-        if(args.length != 3) {
+        if (args.length != 3) {
             System.err.println("Invalid argument count: " + args.length);
             System.err.println(USAGE_TEXT);
             System.exit(1);
@@ -88,34 +91,35 @@ public class ConfigurationGenerator {
     /**
      * generates a set of regurgitator configuration from any open api 'swagger' file.
      * NOTE: both parameters need to exist.
-     * @param swaggerFile an open api 'swagger' file from which to generate configuration
+     *
+     * @param swaggerFile     an open api 'swagger' file from which to generate configuration
      * @param outputDirectory a directory into which to save the configuration files
-     * @param outputTypeStr the desired document type for the configuration files [json|xml]
+     * @param outputTypeStr   the desired document type for the configuration files [json|xml]
      * @throws GenerationException if a problem is encountered whilst generating the configuration
      */
     public static void generateConfiguration(File swaggerFile, File outputDirectory, String outputTypeStr) throws GenerationException {
-         if (!(swaggerFile.exists() && outputDirectory.isDirectory() && outputDirectory.exists() && OutputType.contains(outputTypeStr))) {
-             if(!swaggerFile.exists()) {
-                 System.err.println("Swagger file does not exist");
-             }
+        if (!(swaggerFile.exists() && outputDirectory.isDirectory() && outputDirectory.exists() && OutputType.contains(outputTypeStr))) {
+            if (!swaggerFile.exists()) {
+                System.err.println("Swagger file does not exist");
+            }
 
-             if(!outputDirectory.isDirectory()) {
-                 System.err.println("Output directory is not a directory");
-             }
+            if (!outputDirectory.isDirectory()) {
+                System.err.println("Output directory is not a directory");
+            }
 
-             if(!outputDirectory.exists()) {
-                 System.err.println("Output directory does not exist");
-             }
+            if (!outputDirectory.exists()) {
+                System.err.println("Output directory does not exist");
+            }
 
-             if(!OutputType.contains(outputTypeStr)) {
-                 System.err.println("Invalid output type: " + outputTypeStr);
-             }
+            if (!OutputType.contains(outputTypeStr)) {
+                System.err.println("Invalid output type: " + outputTypeStr);
+            }
 
-             System.err.println(USAGE_TEXT);
-             System.exit(1);
-         }
+            System.err.println(USAGE_TEXT);
+            System.exit(1);
+        }
 
-         OutputType outputType = OutputType.valueOf(outputTypeStr);
+        OutputType outputType = OutputType.valueOf(outputTypeStr);
 
         try {
             System.out.println("parsing open api file: " + swaggerFile.getName());
@@ -161,7 +165,7 @@ public class ConfigurationGenerator {
             pathDirectory.mkdirs();
             RequestBody requestBody = operation.getRequestBody();
 
-            if(requestBody != null) {
+            if (requestBody != null) {
                 System.out.println("### request");
                 processRequest(requestBody.getContent(), componentSchemas, pathDirectory);
             }
@@ -182,7 +186,7 @@ public class ConfigurationGenerator {
             System.out.println("creating path param extract steps");
             List<Step> stepsForConfiguration = new ArrayList<>(buildCreateParameterStepsForPath(path, pathItem.getParameters() != null ? pathItem.getParameters() : operation.getParameters()));
 
-            if(responseCreated) {
+            if (responseCreated) {
                 System.out.println("creating route response decision");
                 Optional<String> optStatusCodeToUse = responses.keySet().stream().filter(sc -> sc.length() == 3 && sc.startsWith("2")).findFirst();
                 String statusCodeToUse = optStatusCodeToUse.orElseGet(() -> responses.keySet().iterator().next());
@@ -210,42 +214,63 @@ public class ConfigurationGenerator {
         }
     }
 
-    private static void processRequest(Content requestContent, Map<String, Schema> componentSchemas, File pathDirectory) throws IOException {
+    private static void processRequest(Content requestContent, Map<String, Schema> componentSchemas, File pathDirectory) throws IOException, ParserConfigurationException, TransformerException {
         System.out.println("### request");
 
         if (requestContent != null && requestContent.size() > 0) {
             String requestMediaTypeName = requestContent.keySet().iterator().next();
             System.out.println("### media type " + requestMediaTypeName);
-            MediaType requestMediaType = requestContent.get(requestMediaTypeName);
 
-            if (requestMediaType.getSchema() != null && (requestMediaType.getSchema().getProperties() != null || requestMediaType.getSchema().get$ref() != null || requestMediaType.getSchema().getAdditionalProperties() != null || "array".equals(requestMediaType.getSchema().getType()))) {
-                File requestFile = new File(pathDirectory, pathDirectory.getName() + "-REQ.json");
-                System.out.println("### generating request file: " + requestFile.getName());
-                JsonUtil.saveToJson(buildObject(requestMediaType.getSchema(), componentSchemas), new FileOutputStream(requestFile, false));
+            if (APPLICATION_JSON.equals(requestMediaTypeName) || APPLICATION_XML.equals(requestMediaTypeName)) {
+                MediaType requestMediaType = requestContent.get(requestMediaTypeName);
+
+                if (requestMediaType.getSchema() != null && (requestMediaType.getSchema().getProperties() != null || requestMediaType.getSchema().get$ref() != null || requestMediaType.getSchema().getAdditionalProperties() != null || "array".equals(requestMediaType.getSchema().getType()))) {
+                    File requestFile = new File(pathDirectory, pathDirectory.getName() + "-REQ." + (APPLICATION_JSON.equals(requestMediaTypeName) ? JSON : XML));
+                    System.out.println("### generating request file: " + requestFile.getName());
+
+                    if(APPLICATION_JSON.equals(requestMediaTypeName)) {
+                        JsonUtil.saveToJson(buildJsonObject(requestMediaType.getSchema(), componentSchemas), new FileOutputStream(requestFile, false));
+                    } else {
+                        Document document = XmlUtil.newDocument();
+                        XmlUtil.saveElement(buildXmlObject(null, requestMediaType.getSchema(), document, componentSchemas), document, new FileOutputStream(requestFile, false));
+                    }
+                }
+            } else {
+                System.out.println("### unsupported request media type: " + requestMediaTypeName);
             }
         } else {
             System.out.println("### request has no content !?");
         }
     }
 
-    private static boolean processResponse(String code, Content responseContent, List<Step> responseDecisionSteps, List<Rule> responseDecisionRules, Map<String, Schema> componentSchemas, File pathDirectory) throws IOException {
+    private static boolean processResponse(String code, Content responseContent, List<Step> responseDecisionSteps, List<Rule> responseDecisionRules, Map<String, Schema> componentSchemas, File pathDirectory) throws IOException, ParserConfigurationException, TransformerException {
         System.out.println("### " + code + " response");
 
         if (responseContent != null && responseContent.size() > 0) {
             String responseMediaTypeName = responseContent.keySet().iterator().next();
             System.out.println("### media type " + responseMediaTypeName);
-            MediaType responseMediaType = responseContent.get(responseMediaTypeName);
 
-            if (responseMediaType.getSchema() != null && (responseMediaType.getSchema().getProperties() != null || responseMediaType.getSchema().get$ref() != null || responseMediaType.getSchema().getAdditionalProperties() != null || "array".equals(responseMediaType.getSchema().getType()))) {
-                File responseFile = new File(pathDirectory, pathDirectory.getName() + "-" + code + ".json");
-                System.out.println("### generating response file: " + responseFile.getName());
-                JsonUtil.saveToJson(buildObject(responseMediaType.getSchema(), componentSchemas), new FileOutputStream(responseFile, false));
-                String fileReference = "classpath:/" + pathDirectory.getName() + "/" + pathDirectory.getName() + "-" + code + ".json";
-                System.out.println("creating http response for file");
-                responseDecisionSteps.add(new CreateHttpResponse(pathDirectory.getName() + "-" + code, null, fileReference, parseLong(code), responseMediaTypeName));
-                System.out.println("creating decision rule for file");
-                responseDecisionRules.add(new Rule(pathDirectory.getName() + "-" + code, singletonList(new Condition(REQUEST_HEADERS_MOCK_RESPONSE_CODE, code, null))));
-                return true;
+            if (APPLICATION_JSON.equals(responseMediaTypeName) || APPLICATION_XML.equals(responseMediaTypeName)) {
+                MediaType responseMediaType = responseContent.get(responseMediaTypeName);
+
+                if (responseMediaType.getSchema() != null && (responseMediaType.getSchema().getProperties() != null || responseMediaType.getSchema().get$ref() != null || responseMediaType.getSchema().getAdditionalProperties() != null || "array".equals(responseMediaType.getSchema().getType()))) {
+                    File responseFile = new File(pathDirectory, pathDirectory.getName() + "-" + code + "." + (APPLICATION_JSON.equals(responseMediaTypeName) ? JSON : XML));
+                    System.out.println("### generating response file: " + responseFile.getName());
+
+                    if(APPLICATION_JSON.equals(responseMediaTypeName)) {
+                        JsonUtil.saveToJson(buildJsonObject(responseMediaType.getSchema(), componentSchemas), new FileOutputStream(responseFile, false));
+                    } else {
+                        Document document = XmlUtil.newDocument();
+                        XmlUtil.saveElement(buildXmlObject(null, responseMediaType.getSchema(), document, componentSchemas), document, new FileOutputStream(responseFile, false));
+                    }
+
+                    String fileReference = "classpath:/" + pathDirectory.getName() + "/" + responseFile.getName();
+                    System.out.println("creating http response for file");
+                    responseDecisionSteps.add(new CreateHttpResponse(pathDirectory.getName() + "-" + code, null, fileReference, parseLong(code), responseMediaTypeName));
+                    System.out.println("creating decision rule for file");
+                    responseDecisionRules.add(new Rule(pathDirectory.getName() + "-" + code, singletonList(new Condition(REQUEST_HEADERS_MOCK_RESPONSE_CODE, code, null))));
+                    return true;
+                }
             }
         } else {
             System.out.println("### no media type ");
@@ -325,7 +350,7 @@ public class ConfigurationGenerator {
             System.out.println("- creating create-parameter steps for path params");
             List<Step> createParameters = new ArrayList<>();
 
-            for(int i = 0; i < ids.size(); i++) {
+            for (int i = 0; i < ids.size(); i++) {
                 createParameters.add(new CreateParameter(ids.get(i), REQUEST_METADATA_REQUEST_URI, new ExtractProcessor(extractFormat, i)));
             }
 
@@ -342,7 +367,7 @@ public class ConfigurationGenerator {
     }
 
     @SuppressWarnings("rawtypes")
-    private static Object buildObject(Schema<?> schema, Map<String, Schema> componentSchemas) {
+    private static Object buildJsonObject(Schema<?> schema, Map<String, Schema> componentSchemas) {
         if (schema.get$ref() != null) {
             String $ref = schema.get$ref();
             $ref = $ref.contains("/") ? $ref.substring($ref.lastIndexOf("/") + 1) : $ref;
@@ -351,39 +376,39 @@ public class ConfigurationGenerator {
 
         if (schema.getProperties() != null || schema.getAdditionalProperties() != null) {
             Map<String, Object> objectContents = new LinkedHashMap<>();
-            Map<String, Schema> properties = schema.getProperties() != null ? schema.getProperties() : ((ObjectSchema)schema.getAdditionalProperties()).getProperties();
+            Map<String, Schema> properties = schema.getProperties() != null ? schema.getProperties() : ((ObjectSchema) schema.getAdditionalProperties()).getProperties();
 
             for (String name : properties.keySet()) {
                 Schema<?> propertySchema = properties.get(name);
                 String type = propertySchema.getType();
 
                 if ("array".equals(type)) {
-                    objectContents.put(name, singletonList(buildObject(propertySchema.getItems(), componentSchemas)));
+                    objectContents.put(name, singletonList(buildJsonObject(propertySchema.getItems(), componentSchemas)));
                 } else if ("integer".equals(type)) {
-                    if("int32".equals(propertySchema.getFormat()) || propertySchema.getFormat() == null) {
+                    if ("int32".equals(propertySchema.getFormat()) || propertySchema.getFormat() == null) {
                         objectContents.put(name, Integer.parseInt(propertySchema.getExample() != null ? "" + propertySchema.getExample() : "0"));
                     }
-                    if("int64".equals(propertySchema.getFormat())) {
+                    if ("int64".equals(propertySchema.getFormat())) {
                         objectContents.put(name, Long.parseLong(propertySchema.getExample() != null ? "" + propertySchema.getExample() : "0"));
                     }
                 } else if ("number".equals(type)) {
-                    if(propertySchema.getFormat() == null) {
+                    if (propertySchema.getFormat() == null) {
                         objectContents.put(name, Integer.parseInt(propertySchema.getExample() != null ? "" + propertySchema.getExample() : "0"));
                     }
-                    if("float".equals(propertySchema.getFormat())) {
+                    if ("float".equals(propertySchema.getFormat())) {
                         objectContents.put(name, Float.parseFloat(propertySchema.getExample() != null ? "" + propertySchema.getExample() : "0"));
                     }
-                    if("double".equals(propertySchema.getFormat())) {
+                    if ("double".equals(propertySchema.getFormat())) {
                         objectContents.put(name, Double.parseDouble(propertySchema.getExample() != null ? "" + propertySchema.getExample() : "0"));
                     }
                 } else if ("object".equals(type)) {
-                    objectContents.put(name, buildObject(propertySchema, componentSchemas));
+                    objectContents.put(name, buildJsonObject(propertySchema, componentSchemas));
                 } else if ("boolean".equals(type)) {
                     objectContents.put(name, Boolean.parseBoolean("" + (propertySchema.getExample() != null ? propertySchema.getExample() : true)));
                 } else if (propertySchema.get$ref() != null) {
                     String $ref = propertySchema.get$ref();
                     $ref = $ref.contains("/") ? $ref.substring($ref.lastIndexOf("/") + 1) : $ref;
-                    objectContents.put(name, buildObject(componentSchemas.get($ref), componentSchemas));
+                    objectContents.put(name, buildJsonObject(componentSchemas.get($ref), componentSchemas));
                 } else { // assume string
                     objectContents.put(name, "" + (propertySchema.getExample() != null ? propertySchema.getExample() : "foobar"));
                 }
@@ -391,11 +416,103 @@ public class ConfigurationGenerator {
 
             return objectContents;
         } else if ("array".equals(schema.getType())) {
-            return singletonList(buildObject(schema.getItems(), componentSchemas));
+            return singletonList(buildJsonObject(schema.getItems(), componentSchemas));
         } else if ("string".equals(schema.getType())) {
             return schema.getExample();
         }
 
         throw new IllegalStateException("Cannot construct object for schema");
+    }
+
+    @SuppressWarnings("rawtypes")
+    private static Element buildXmlObject(String schemaName, Schema<?> schema, Document document, Map<String, Schema> componentSchemas) {
+        if (schema.get$ref() != null) {
+            String $ref = schema.get$ref();
+            $ref = $ref.contains("/") ? $ref.substring($ref.lastIndexOf("/") + 1) : $ref;
+            schema = componentSchemas.get($ref);
+        }
+
+        XML xml = schema.getXml();
+        String elementName = xml != null ? xml.getName() : schema.getName() != null ? schema.getName() : schemaName;
+        String prefix = xml != null ? xml.getPrefix() : null;
+        String namespace = xml != null ? xml.getNamespace() : null;
+
+        if (schema.getProperties() != null || schema.getAdditionalProperties() != null) {
+            if(elementName == null) {
+                throw new IllegalStateException("no element name defined");
+            }
+
+            Element element = document.createElement(prefix != null && prefix.length() > 0 ? prefix + ":" + elementName : elementName);
+
+            if(prefix != null && namespace != null) {
+                element.setAttributeNS("http://www.w3.org/2000/xmlns/", "xmlns:" + prefix, namespace);
+            }
+
+            Map<String, Schema> properties = schema.getProperties() != null ? schema.getProperties() : ((ObjectSchema) schema.getAdditionalProperties()).getProperties();
+
+            for (String name : properties.keySet()) {
+                Schema<?> propertySchema = properties.get(name);
+                String type = propertySchema.getType();
+                XML propertyXml = propertySchema.getXml();
+
+                if ("array".equals(type)) {
+                    //objectContents.put(name, singletonList(buildJsonObject(propertySchema.getItems(), componentSchemas)));
+                } else if ("integer".equals(type)) {
+                    String value = "";
+
+                    if ("int32".equals(propertySchema.getFormat()) || propertySchema.getFormat() == null) {
+                        value = "" + Integer.parseInt(propertySchema.getExample() != null ? "" + propertySchema.getExample() : "0");
+                    }
+                    if ("int64".equals(propertySchema.getFormat())) {
+                        value = "" + Long.parseLong(propertySchema.getExample() != null ? "" + propertySchema.getExample() : "0");
+                    }
+
+                    xmlChildElementOrAttribute(name, value, propertyXml, document, element);
+                } else if ("number".equals(type)) {
+                    Element child = document.createElement(name);
+                    element.appendChild(child);
+
+                    if (propertySchema.getFormat() == null) {
+                        child.appendChild(document.createTextNode("" + Integer.parseInt(propertySchema.getExample() != null ? "" + propertySchema.getExample() : "0")));
+                    }
+                    if ("float".equals(propertySchema.getFormat())) {
+                        child.appendChild(document.createTextNode("" + Float.parseFloat(propertySchema.getExample() != null ? "" + propertySchema.getExample() : "0")));
+                    }
+                    if ("double".equals(propertySchema.getFormat())) {
+                        child.appendChild(document.createTextNode("" + Double.parseDouble(propertySchema.getExample() != null ? "" + propertySchema.getExample() : "0")));
+                    }
+                } else if ("object".equals(type)) {
+                    element.appendChild(buildXmlObject(name, propertySchema, document, componentSchemas));
+                } else if ("boolean".equals(type)) {
+                    String value = "" + Boolean.parseBoolean("" + (propertySchema.getExample() != null ? propertySchema.getExample() : true));
+                    xmlChildElementOrAttribute(name, value, propertyXml, document, element);
+                } else if (propertySchema.get$ref() != null) {
+                    element.appendChild(buildXmlObject(name, propertySchema, document, componentSchemas));
+                } else { // assume string
+                    String value = "" + (propertySchema.getExample() != null ? propertySchema.getExample() : "foobar");
+                    xmlChildElementOrAttribute(name, value, propertyXml, document, element);
+                }
+            }
+
+            return element;
+        } else if ("array".equals(schema.getType())) {
+            //return singletonList(buildJsonObject(schema.getItems(), componentSchemas));
+            return document.createElement("");
+        } else if ("string".equals(schema.getType())) {
+            //return schema.getExample();
+            return document.createElement("");
+        }
+
+        throw new IllegalStateException("Cannot construct object for schema");
+    }
+
+    private static void xmlChildElementOrAttribute(String name, String value, XML propertyXml, Document document, Element element) {
+        if (propertyXml != null && propertyXml.getAttribute()) {
+            element.setAttribute(name, value);
+        } else {
+            Element child = document.createElement(name);
+            element.appendChild(child);
+            child.appendChild(document.createTextNode(value));
+        }
     }
 }
