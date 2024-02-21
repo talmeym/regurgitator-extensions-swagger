@@ -28,4 +28,4 @@ functionality includes:
 
 **extend what is generated to add simple or complex logic to your mock (without writing any code)**
 
-```java uk.emarte.regurgitator.extensions.swagger.ConfigurationGenerator swaggerfile.[json|yaml] outputDirectory```
+```java uk.emarte.regurgitator.extensions.swagger.ConfigurationGenerator swaggerfile.[json|yaml] outputDirectory outputType [json|xml]```
