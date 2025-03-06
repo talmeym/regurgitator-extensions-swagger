@@ -8,24 +8,30 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
+import java.util.List;
+
 import static uk.emarte.regurgitator.extensions.swagger.XmlUtil.RG;
 import static uk.emarte.regurgitator.extensions.swagger.XmlUtil.addAttributeIfPresent;
 
-class ExtractProcessor implements ValueProcessor {
-    @JsonProperty private final String kind = "extract-processor";
-    @JsonProperty private final String format;
-    @JsonProperty private final int index;
+class Sequence implements Step {
+    @JsonProperty private final String kind = "sequence";
+    @JsonProperty private final String id;
+    @JsonProperty private final List<Step> steps;
 
-    ExtractProcessor(String format, int index) {
-        this.format = format;
-        this.index = index;
+    Sequence(String id, List<Step> steps) {
+        this.id = id;
+        this.steps = steps;
     }
 
     @Override
     public Element toXml(Document document, Element parentElement) {
         Element element = document.createElement(RG + kind);
-        addAttributeIfPresent(element, "format", format);
-        addAttributeIfPresent(element, "index", "" + index);
+        addAttributeIfPresent(element, "id", id);
+
+        for(Step step: steps) {
+            element.appendChild(step.toXml(document, element));
+        }
+
         return element;
     }
 }

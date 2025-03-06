@@ -18,11 +18,13 @@ class Condition implements XmlAware {
     @JsonProperty private final String source;
     @JsonProperty private final String equals;
     @JsonProperty private final String matches;
+    @JsonProperty private final String exists;
 
-    Condition(String source, String equals, String matches) {
+    Condition(String source, String equals, String matches, String exists) {
         this.source = source;
         this.equals = equals;
         this.matches = matches;
+        this.exists = exists;
     }
 
     @Override
@@ -31,6 +33,7 @@ class Condition implements XmlAware {
         addAttributeIfPresent(element, "source", source);
         addAttributeIfPresent(element, "equals", equals);
         addAttributeIfPresent(element, "matches", matches);
+        addAttributeIfPresent(element, "exists", exists);
         return element;
     }
 }

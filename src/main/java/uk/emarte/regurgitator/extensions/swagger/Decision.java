@@ -21,9 +21,9 @@ class Decision implements Step {
     @JsonProperty String id;
     @JsonProperty List<Step> steps;
     @JsonProperty List<Rule> rules;
-    @JsonProperty("default-step") Object defaultStep;
+    @JsonProperty("default-step") String defaultStep;
 
-    Decision(String id, List<Step> steps, List<Rule> rules, Object defaultStep) {
+    Decision(String id, List<Step> steps, List<Rule> rules, String defaultStep) {
         this.id = id;
         this.steps = steps;
         this.rules = rules;
@@ -44,7 +44,7 @@ class Decision implements Step {
 
         Element rulesElement = document.createElement(RG + "rules");
         element.appendChild(rulesElement);
-        addAttributeIfPresent(rulesElement, "default-step", "" + defaultStep);
+        addAttributeIfPresent(rulesElement, "default-step", defaultStep);
 
         for(Rule rule: rules) {
             rulesElement.appendChild(rule.toXml(document, rulesElement));

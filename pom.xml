@@ -6,7 +6,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>uk.emarte.regurgitator</groupId>
     <artifactId>regurgitator-extensions-swagger</artifactId>
-    <version>0.1.4</version>
+    <version>0.1.5</version>
     <packaging>jar</packaging>
     <name>Regurgitator Extensions Swagger</name>
 
