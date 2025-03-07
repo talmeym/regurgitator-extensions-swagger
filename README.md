@@ -24,7 +24,7 @@ functionality includes:
 - generation of example request and response files (in json or xml, as specified in swagger)
 - extraction of path and query parameters using extract processor
 - json and xml configuration output now supported
-- generation of postman request collection
+- generation of corresponding postman request collection for testing
 
 **>> go from a single open api file to a working mock for every method/path combination ..**
 
