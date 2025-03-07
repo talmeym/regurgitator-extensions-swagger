@@ -32,6 +32,6 @@ functionality includes:
 
 **>> test every method/path combination with Postman ..**
 
-**... without writing any code**
+**... all without writing any code**
 
 ```java uk.emarte.regurgitator.extensions.swagger.ConfigurationGenerator swaggerfile.[json|yaml] outputDirectory outputType [json|xml]```
