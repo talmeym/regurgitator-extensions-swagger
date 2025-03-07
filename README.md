@@ -34,6 +34,6 @@ functionality includes:
 
 **... all without writing any code**
 
-```java uk.emarte.regurgitator.extensions.swagger.ConfigurationGenerator swaggerfile.[json|yaml] outputDirectory outputType [json|xml] 8090```
+```java uk.emarte.regurgitator.extensions.swagger.ConfigurationGenerator swaggerfile.[json|yaml] outputDirectory outputType [json|xml] portNumber```
 
 NOTE: **regurgitator-extensions-swagger** works with **regurgitator-core** version **0.1.3+**
