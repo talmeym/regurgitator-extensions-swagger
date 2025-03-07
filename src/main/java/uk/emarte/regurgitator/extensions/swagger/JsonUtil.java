@@ -47,16 +47,20 @@ public class JsonUtil {
 
                     objectContents.put(name, singletonList(buildJsonObject(propertySchema.getItems(), componentSchemas)));
                 } else if (INTEGER.equals(type)) {
-                    switch(propertySchema.getFormat()) {
-                        case INT_64: objectContents.put(name, Long.parseLong(propertySchema.getExample() != null ? "" + propertySchema.getExample() : ZERO)); break;
-                        case INT_32:
-                        default: objectContents.put(name, Integer.parseInt(propertySchema.getExample() != null ? "" + propertySchema.getExample() : ZERO));
+                    if(INT_64.equals(propertySchema.getFormat())) {
+                        objectContents.put(name, Long.parseLong(propertySchema.getExample() != null ? "" + propertySchema.getExample() : ZERO));
+                    } else {
+                        objectContents.put(name, Integer.parseInt(propertySchema.getExample() != null ? "" + propertySchema.getExample() : ZERO));
                     }
                 } else if (NUMBER.equals(type)) {
-                    switch(propertySchema.getFormat()) {
-                        case FLOAT: objectContents.put(name, Float.parseFloat(propertySchema.getExample() != null ? "" + propertySchema.getExample() : ZERO)); break;
-                        case DOUBLE: objectContents.put(name, Double.parseDouble(propertySchema.getExample() != null ? "" + propertySchema.getExample() : ZERO)); break;
-                        default: objectContents.put(name, Integer.parseInt(propertySchema.getExample() != null ? "" + propertySchema.getExample() : ZERO));
+                    if(propertySchema.getFormat() != null) {
+                        switch (propertySchema.getFormat()) {
+                            case FLOAT: objectContents.put(name, Float.parseFloat(propertySchema.getExample() != null ? "" + propertySchema.getExample() : ZERO)); break;
+                            case DOUBLE: objectContents.put(name, Double.parseDouble(propertySchema.getExample() != null ? "" + propertySchema.getExample() : ZERO)); break;
+                            default: objectContents.put(name, Integer.parseInt(propertySchema.getExample() != null ? "" + propertySchema.getExample() : ZERO));
+                        }
+                    } else {
+                        objectContents.put(name, Integer.parseInt(propertySchema.getExample() != null ? "" + propertySchema.getExample() : ZERO));
                     }
                 } else if (OBJECT.equals(type)) {
                     objectContents.put(name, buildJsonObject(propertySchema, componentSchemas));
