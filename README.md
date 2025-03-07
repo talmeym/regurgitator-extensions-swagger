@@ -25,8 +25,8 @@ functionality includes:
 - extraction of path and query parameters using extract processor
 - json and xml configuration output now supported
 
-**go from a single open api file to a working mock for every method/path combination .. without writing any code**
+**>> go from a single open api file to a working mock for every method/path combination .. without writing any code**
 
-**extend what is generated to add simple or complex logic to your mock .. without writing any code**
+**>> extend what is generated to add simple or complex logic to your mock .. without writing any code**
 
 ```java uk.emarte.regurgitator.extensions.swagger.ConfigurationGenerator swaggerfile.[json|yaml] outputDirectory outputType [json|xml]```
