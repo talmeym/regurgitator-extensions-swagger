@@ -36,4 +36,4 @@ functionality includes:
 
 ```java uk.emarte.regurgitator.extensions.swagger.ConfigurationGenerator swaggerfile.[json|yaml] outputDirectory outputType [json|xml] 8090```
 
-NOTE: regurgitator-extensions-swagger works with `regurgitator-core` version `0.1.3`+
+NOTE: `regurgitator-extensions-swagger` works with `regurgitator-core` version `0.1.3`+
