@@ -21,12 +21,12 @@ generate regurgitator configuration from open api / swagger files
 functionality includes:
 - parsing of json and yaml open api / swagger files
 - request routing handled via top level decision step
-- generation of example request and response files (in json or xml, as specified)
-- extraction of path variable parameters using extract processor
+- generation of example request and response files (in json or xml, as specified in swagger)
+- extraction of path and query parameters using extract processor
 - json and xml configuration output now supported
 
-**go from a single open api file to a working mock returning responses for every method/path combination (without writing any code)**
+**>> go from a single open api file to a working mock for every method/path combination .. without writing any code**
 
-**extend what is generated to add simple or complex logic to your mock (without writing any code)**
+**>> extend what is generated to add simple or complex logic to your mock .. without writing any code**
 
 ```java uk.emarte.regurgitator.extensions.swagger.ConfigurationGenerator swaggerfile.[json|yaml] outputDirectory outputType [json|xml]```
