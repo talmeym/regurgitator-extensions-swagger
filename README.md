@@ -4,8 +4,6 @@ regurgitator is a lightweight, modular, extendable java framework that you confi
 
 start your reading here: [regurgitator-all](https://talmeym.github.io/regurgitator-all#regurgitator)
 
-[``apidocs``](https://regurgitator.emarte.uk/apidocs/regurgitator-extensions-swagger/0.1.5/uk/emarte/regurgitator/extensions/swagger/package-summary.html)
-
 ## regurgitator and swagger
 
 generate regurgitator configuration from open api / swagger files
@@ -42,3 +40,7 @@ generate regurgitator configuration from open api / swagger files
 ```java uk.emarte.regurgitator.extensions.swagger.ConfigurationGenerator swaggerfile.[json|yaml] outputDirectory outputType [json|xml] portNumber```
 
 NOTE: **regurgitator-extensions-swagger** works with **regurgitator-core** version **0.1.3+**
+
+---
+
+api docs: [``0.1.5``](https://regurgitator.emarte.uk/apidocs/regurgitator-extensions-swagger/0.1.5/){:target="_blank"}  [``0.1.4``](https://regurgitator.emarte.uk/apidocs/regurgitator-extensions-swagger/0.1.4/){:target="_blank"}  [``0.1.3``](https://regurgitator.emarte.uk/apidocs/regurgitator-extensions-swagger/0.1.3/){:target="_blank"}  [``0.1.2``](https://regurgitator.emarte.uk/apidocs/regurgitator-extensions-swagger/0.1.2/){:target="_blank"} 
