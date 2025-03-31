@@ -9,5 +9,4 @@ import org.w3c.dom.Element;
 
 public interface XmlAware {
     Element toXml(Document document, Element parentElement);
-
 }

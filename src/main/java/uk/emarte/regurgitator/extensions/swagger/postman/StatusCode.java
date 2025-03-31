@@ -46,6 +46,16 @@ public enum StatusCode {
     UNPROCESSABLE_ENTITY(422),
     LOCKED(423),
     FAILED_DEPENDENCY(424),
+    TEMPORARILY_UNAVAILABLE(480),
+    CALL_TRANSACTION_DOES_NOT_EXIST(481),
+    LOOP_DETECTED(482),
+    TOO_MANY_HOPS(483),
+    ADDRESS_INCOMPLETE(484),
+    AMBIGUOUS(485),
+    BUSY_HERE(486),
+    REQUEST_TERMINATED(487),
+    NOT_ACCEPTIBLE_HERE(488),
+    BAD_EVENT(489),
     INTERNAL_SERVER_ERROR(500),
     NOT_IMPLEMENTED(501),
     BAD_GATEWAY(502),
@@ -73,6 +83,6 @@ public enum StatusCode {
             }
         }
 
-        return null;
+        throw new IllegalArgumentException("Invalid status code: " + code);
     }
 }

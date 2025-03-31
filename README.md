@@ -37,7 +37,7 @@ generate regurgitator configuration from open api / swagger files
 
 ### usage
 
-```java uk.emarte.regurgitator.extensions.swagger.ConfigurationGenerator swaggerfile.[json|yaml] outputDirectory outputType [json|xml] portNumber```
+```java uk.emarte.regurgitator.extensions.swagger.ConfigurationGenerator swaggerfile.[json|yaml] outputDirectory outputType [json|xml]```
 
 NOTE: **regurgitator-extensions-swagger** works with **regurgitator-core** version **0.1.3+**
 

@@ -24,9 +24,10 @@ class RegurgitatorConfiguration implements XmlAware {
     public Element toXml(Document document, Element parentElement) {
         Element element = document.createElement(RG + kind);
         element.setAttributeNS(XMLNS_URL, "xmlns:rg", REGURG_CORE_URL);
+        element.setAttributeNS(XMLNS_URL, "xmlns:rge", REGURG_EXT_URL);
         element.setAttributeNS(XMLNS_URL, "xmlns:rgw", REGURG_EXT_WEB_URL);
         element.setAttributeNS(XMLNS_URL, "xmlns:xsi", XML_SCHEMA_URL);
-        element.setAttributeNS(XML_SCHEMA_URL, "xsi:schemaLocation", REGURG_CORE_URL + " regurgitatorCore.xsd " + REGURG_EXT_WEB_URL + " regurgitatorExtensionsWeb.xsd");
+        element.setAttributeNS(XML_SCHEMA_URL, "xsi:schemaLocation", REGURG_CORE_URL + " regurgitatorCore.xsd " + REGURG_EXT_URL + " regurgitatorExtensions.xsd " + REGURG_EXT_WEB_URL + " regurgitatorExtensionsWeb.xsd");
 
         for(Step step: steps) {
             element.appendChild(step.toXml(document, element));
