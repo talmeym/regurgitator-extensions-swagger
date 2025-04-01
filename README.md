@@ -22,7 +22,7 @@ generate regurgitator configuration from open api / swagger files
 - request routing handled via top level decision step
 - generation of example request and response files (in json or xml, as specified in swagger)
 - extraction of path and query parameters using extract processor
-- json and xml configuration output now supported
+- json and xml configuration output supported
 - generation of corresponding postman request collection for testing
 
 ### benefits
